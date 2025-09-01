@@ -1,0 +1,72 @@
+name: culdechat-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: culdechat-postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d culdechat"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    environment:
+      POSTGRES_DB: culdechat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      context: ../../
+      dockerfile: api/Dockerfile
+    container_name: culdechat-migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: culdechat
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGSSLMODE: disable
+    working_dir: /app/api
+    command: ["go", "run", "./cmd/migrate/main.go"]
+    volumes:
+      - ../../:/app:cached
+
+  api:
+    build:
+      context: ../../
+      dockerfile: api/Dockerfile
+    container_name: culdechat-api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      # Prefer DATABASE_URL if provided; otherwise use discrete vars
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: culdechat
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGSSLMODE: disable
+      PGPOOL_MIN_CONNS: "0"
+      PGPOOL_MAX_CONNS: "10"
+      PGCONNECT_TIMEOUT: "5"
+    ports:
+      - "8080:8080"
+    working_dir: /app/api
+    command: ["go", "run", "./cmd/main.go"]
+    volumes:
+      - ../../:/app:cached
+
+volumes:
+  db_data:
+    driver: local
+
+
