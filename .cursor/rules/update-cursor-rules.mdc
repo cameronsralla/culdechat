@@ -1,0 +1,5 @@
+---
+description: when completing any request which makes functional changes to the code, make sure to update the corresponding .cursor/rules documentation to ensure that it reflects the current state of the app. 
+globs:
+alwaysApply: true
+---
