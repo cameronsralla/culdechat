@@ -18,7 +18,7 @@ The application will be a containerized system running in a Docker environment o
 ## 3. Backend Architecture
 - **Framework**: Gin for the REST API in Go.
 - **API documentation**: OpenAPI/Swagger 2.0 is generated from handler comments (`make docs`) and served at `/api/docs/index.html` only when `CULDECHAT_DOCS=true`.
-- **Sessions**: Short-lived access JWTs plus hashed refresh tokens (30 days). Auth middleware reloads the user from the database on every request.
+- **Sessions**: Short-lived access JWTs plus hashed refresh tokens (30 days). Auth middleware reloads the user from the database on every request. `AdminRequired` authenticates and checks `is_admin` without nesting `AuthRequired` (which would call `Next` and run the handler before the admin check).
 - **Real-time Features**: Socket.IO will be implemented on the Go backend to manage real-time messaging and notifications (not in MVP).
 
 ## 4. Database & Data Management

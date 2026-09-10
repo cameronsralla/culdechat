@@ -208,6 +208,24 @@ func TestBoardsPostsCommentsReactionsFeed(t *testing.T) {
 	}
 }
 
+func TestResidentCannotUseAdminRoutes(t *testing.T) {
+	testutil.Setup(t)
+	r := NewRouter()
+	_, adminToken := seedAdmin(t)
+	residentToken := inviteAndComplete(t, r, adminToken, "resident@test.local", "101", "Alex Rivera")
+
+	rec := doJSON(t, r, http.MethodGet, "/api/admin/users", residentToken, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("resident roster should 403, got %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, r, http.MethodPost, "/api/auth/register", residentToken, map[string]string{
+		"email": "intruder@test.local", "unit_number": "999",
+	})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("resident invite should 403, got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestDirectoryOptInAndOffboard(t *testing.T) {
 	testutil.Setup(t)
 	r := NewRouter()
