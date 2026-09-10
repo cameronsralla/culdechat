@@ -1,5 +1,8 @@
 api/bin/
 .env
-
-
+infra/dev/.env
+node_modules/
+.expo/
+dist/
 log/
+data/uploads/

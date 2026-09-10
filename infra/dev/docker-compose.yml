@@ -15,7 +15,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -34,6 +34,13 @@ services:
       PGUSER: postgres
       PGPASSWORD: postgres
       PGSSLMODE: disable
+      JWT_SECRET: local-dev-only-not-for-production
+      CULDECHAT_ALLOW_INSECURE_JWT: "true"
+      CULDECHAT_DOCS: "true"
+      BOOTSTRAP_ADMIN_EMAIL: admin@culdechat.local
+      BOOTSTRAP_ADMIN_PASSWORD: changeme123
+      BOOTSTRAP_ADMIN_UNIT: Admin
+      BOOTSTRAP_ADMIN_NAME: Business Admin
     working_dir: /app/api
     command: ["go", "run", "./cmd/migrate/main.go"]
     volumes:
@@ -47,6 +54,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     environment:
       # Prefer DATABASE_URL if provided; otherwise use discrete vars
       PGHOST: db
@@ -58,15 +67,62 @@ services:
       PGPOOL_MIN_CONNS: "0"
       PGPOOL_MAX_CONNS: "10"
       PGCONNECT_TIMEOUT: "5"
+      JWT_SECRET: local-dev-only-not-for-production
+      CULDECHAT_ALLOW_INSECURE_JWT: "true"
+      CULDECHAT_DOCS: "true"
+      CULDECHAT_RATE_LIMIT: "off"
+      CULDECHAT_CORS_ORIGINS: http://localhost:8081,http://127.0.0.1:8081
+      CULDECHAT_UPLOAD_DIR: /data/uploads
+      CULDECHAT_COMMUNITY_NAME: Cul-de-Chat
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-Cul-de-Chat <noreply@culdechat.local>}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      BOOTSTRAP_ADMIN_EMAIL: admin@culdechat.local
+      BOOTSTRAP_ADMIN_PASSWORD: changeme123
+      BOOTSTRAP_ADMIN_UNIT: Admin
+      BOOTSTRAP_ADMIN_NAME: Business Admin
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     working_dir: /app/api
     command: ["go", "run", "./cmd/main.go"]
     volumes:
       - ../../:/app:cached
+      - uploads_data:/data/uploads
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    container_name: culdechat-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  caddy:
+    profiles: ["tls"]
+    image: caddy:2-alpine
+    container_name: culdechat-caddy
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CULDECHAT_DOMAIN: ${CULDECHAT_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   db_data:
+    driver: local
+  uploads_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
 
 

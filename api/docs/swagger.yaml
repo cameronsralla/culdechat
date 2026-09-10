@@ -1,0 +1,1075 @@
+basePath: /api
+definitions:
+  routes.ErrorResponse:
+    properties:
+      error:
+        example: something went wrong
+        type: string
+    type: object
+  services.AdminUserDTO:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      is_admin:
+        type: boolean
+      name:
+        type: string
+      status:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.AuthResponse:
+    properties:
+      refresh_token:
+        type: string
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/services.AuthUserDTO'
+    type: object
+  services.AuthUserDTO:
+    properties:
+      id:
+        type: string
+      is_admin:
+        type: boolean
+      name:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.AuthorDTO:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.BoardDTO:
+    properties:
+      creator_id:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_subscribed:
+        type: boolean
+      name:
+        type: string
+      subscriber_count:
+        type: integer
+    type: object
+  services.BoardRefDTO:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  services.ChangePasswordInput:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        type: string
+    type: object
+  services.CommentDTO:
+    properties:
+      author:
+        $ref: '#/definitions/services.AuthorDTO'
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+    type: object
+  services.CompleteRegistrationInput:
+    properties:
+      name:
+        example: Alex Rivera
+        type: string
+      passcode:
+        example: a3k9wm2p7x
+        type: string
+      password:
+        example: a-strong-password
+        type: string
+      token:
+        example: invite-token
+        type: string
+    type: object
+  services.CreateBoardInput:
+    properties:
+      description:
+        example: Let's read and discuss!
+        type: string
+      name:
+        example: Book Club
+        type: string
+    type: object
+  services.CreateCommentInput:
+    properties:
+      content:
+        example: I have one you can use!
+        type: string
+    type: object
+  services.CreatePostInput:
+    properties:
+      content:
+        example: We'll be reading The Midnight Library.
+        type: string
+      is_pinned:
+        type: boolean
+      post_type:
+        example: standard
+        type: string
+      title:
+        example: New book for September!
+        type: string
+    type: object
+  services.CreatedCommentDTO:
+    properties:
+      author_id:
+        type: string
+      content:
+        type: string
+      id:
+        type: string
+    type: object
+  services.CreatedPostDTO:
+    properties:
+      author_id:
+        type: string
+      board_id:
+        type: string
+      content:
+        type: string
+      id:
+        type: string
+      is_pinned:
+        type: boolean
+      post_type:
+        type: string
+      title:
+        type: string
+    type: object
+  services.DirectoryUserDTO:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      profile_picture_url:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.FeedPageDTO:
+    properties:
+      next_page_cursor:
+        type: string
+      posts:
+        items:
+          $ref: '#/definitions/services.FeedPostDTO'
+        type: array
+    type: object
+  services.FeedPostDTO:
+    properties:
+      author:
+        $ref: '#/definitions/services.AuthorDTO'
+      board:
+        $ref: '#/definitions/services.BoardRefDTO'
+      comment_count:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: string
+      is_pinned:
+        type: boolean
+      my_reaction:
+        type: string
+      post_type:
+        type: string
+      reaction_count:
+        type: integer
+      snippet:
+        type: string
+      title:
+        type: string
+    type: object
+  services.LoginInput:
+    properties:
+      email:
+        example: resident@example.com
+        type: string
+      password:
+        example: user_password
+        type: string
+    type: object
+  services.LogoutInput:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  services.MeDTO:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      is_admin:
+        type: boolean
+      name:
+        type: string
+      status:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.PostDetailDTO:
+    properties:
+      author:
+        $ref: '#/definitions/services.AuthorDTO'
+      board:
+        $ref: '#/definitions/services.BoardRefDTO'
+      comments:
+        items:
+          $ref: '#/definitions/services.CommentDTO'
+        type: array
+      comments_disabled:
+        type: boolean
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_pinned:
+        type: boolean
+      my_reaction:
+        type: string
+      post_type:
+        type: string
+      reactions:
+        items:
+          $ref: '#/definitions/services.ReactionCountDTO'
+        type: array
+      title:
+        type: string
+    type: object
+  services.ProfileDTO:
+    properties:
+      directory_opt_in:
+        type: boolean
+      email:
+        type: string
+      id:
+        type: string
+      is_admin:
+        type: boolean
+      name:
+        type: string
+      profile_picture_url:
+        type: string
+      unit_number:
+        type: string
+    type: object
+  services.ReactInput:
+    properties:
+      type:
+        example: like
+        type: string
+    type: object
+  services.ReactionCountDTO:
+    properties:
+      count:
+        example: 3
+        type: integer
+      type:
+        example: like
+        type: string
+    type: object
+  services.RefreshInput:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  services.RegisterInput:
+    properties:
+      email:
+        example: new.resident@example.com
+        type: string
+      unit_number:
+        example: "101"
+        type: string
+    type: object
+  services.RegisterResponse:
+    properties:
+      email:
+        type: string
+      email_error:
+        type: string
+      email_sent:
+        type: boolean
+      invite_expires_at:
+        type: string
+      message:
+        type: string
+      passcode:
+        type: string
+      registration_token:
+        type: string
+    type: object
+  services.SubscribeResponse:
+    properties:
+      message:
+        type: string
+      subscribed:
+        type: boolean
+    type: object
+  services.UpdatePostInput:
+    properties:
+      content:
+        type: string
+      is_pinned:
+        type: boolean
+      title:
+        type: string
+    type: object
+  services.UpdateProfileInput:
+    properties:
+      directory_opt_in:
+        type: boolean
+      name:
+        type: string
+      profile_picture_url:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Private town-square API for a residential community.
+  title: Cul-de-Chat API
+  version: "1.0"
+paths:
+  /admin/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.AdminUserDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List residents
+      tags:
+      - admin
+  /admin/users/{userId}/offboard:
+    post:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Offboard a resident
+      tags:
+      - admin
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Passwords
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.ChangePasswordInput'
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /auth/complete-registration:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Invite completion
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.CompleteRegistrationInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.AuthResponse'
+      summary: Complete resident registration
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.AuthResponse'
+      summary: Log in
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.LogoutInput'
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      summary: Revoke a refresh token
+      tags:
+      - auth
+  /auth/logout-all:
+    post:
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Revoke all refresh tokens for the current user
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.MeDTO'
+      security:
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.RefreshInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.AuthResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Resident email and unit
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.RegisterInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a resident
+      tags:
+      - auth
+  /boards:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.BoardDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List boards
+      tags:
+      - boards
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Board
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateBoardInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.BoardDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a board
+      tags:
+      - boards
+  /boards/{boardId}:
+    get:
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.BoardDTO'
+      security:
+      - BearerAuth: []
+      summary: Get a board
+      tags:
+      - boards
+  /boards/{boardId}/posts:
+    get:
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      - description: Pagination cursor
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.FeedPageDTO'
+      security:
+      - BearerAuth: []
+      summary: List posts on a board
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      description: Admins may set post_type=bulletin (auto-pinned, comments disabled)
+        or is_pinned=true.
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      - description: Post
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreatePostInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.CreatedPostDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a post on a board
+      tags:
+      - posts
+  /boards/{boardId}/subscribe:
+    post:
+      description: Toggles the current user's subscription to the board.
+      parameters:
+      - description: Board ID
+        in: path
+        name: boardId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.SubscribeResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Subscribe or unsubscribe
+      tags:
+      - boards
+  /directory:
+    get:
+      description: Active users who opted in. Shows name and unit number.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.DirectoryUserDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Resident directory
+      tags:
+      - profile
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - meta
+  /media/profile/{filename}:
+    get:
+      parameters:
+      - description: Filename
+        in: path
+        name: filename
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Fetch an uploaded profile photo
+      tags:
+      - profile
+  /posts:
+    get:
+      description: Paginated posts from all boards. Pinned bulletin posts appear first.
+      parameters:
+      - description: Pagination cursor
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.FeedPageDTO'
+      security:
+      - BearerAuth: []
+      summary: General feed
+      tags:
+      - posts
+  /posts/{postId}:
+    delete:
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a post
+      tags:
+      - posts
+    get:
+      description: Full post including comments and reaction counts. Bulletin posts
+        have comments disabled.
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.PostDetailDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a post
+      tags:
+      - posts
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.UpdatePostInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.CreatedPostDTO'
+      security:
+      - BearerAuth: []
+      summary: Edit a post
+      tags:
+      - posts
+  /posts/{postId}/comments:
+    get:
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.CommentDTO'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List comments on a post
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Comment
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateCommentInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.CreatedCommentDTO'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Comment on a post
+      tags:
+      - comments
+  /posts/{postId}/comments/{commentId}:
+    delete:
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
+      tags:
+      - comments
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Comment ID
+        in: path
+        name: commentId
+        required: true
+        type: string
+      - description: Comment
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateCommentInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.CreatedCommentDTO'
+      security:
+      - BearerAuth: []
+      summary: Edit a comment
+      tags:
+      - comments
+  /posts/{postId}/reactions:
+    delete:
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Remove your reaction
+      tags:
+      - reactions
+    put:
+      consumes:
+      - application/json
+      description: 'One reaction per user per post. Allowed types: like, love, laugh,
+        wow, sad, angry.'
+      parameters:
+      - description: Post ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Reaction
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.ReactInput'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set a reaction
+      tags:
+      - reactions
+  /profile/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ProfileDTO'
+      security:
+      - BearerAuth: []
+      summary: Get my profile
+      tags:
+      - profile
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Profile fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.UpdateProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ProfileDTO'
+      security:
+      - BearerAuth: []
+      summary: Update my profile
+      tags:
+      - profile
+  /profile/me/photo:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: jpeg, png, or webp, max 2MB
+        in: formData
+        name: photo
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ProfileDTO'
+      security:
+      - BearerAuth: []
+      summary: Upload profile photo
+      tags:
+      - profile
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

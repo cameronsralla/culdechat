@@ -10,6 +10,7 @@ import (
 // DirectoryUser is a lightweight projection for the public directory.
 type DirectoryUser struct {
 	ID                string
+	Name              string
 	UnitNumber        string
 	ProfilePictureURL *string
 }
@@ -17,7 +18,7 @@ type DirectoryUser struct {
 // ListDirectoryUsers returns active users who opted-in to the directory.
 func ListDirectoryUsers(ctx context.Context) ([]DirectoryUser, error) {
 	const q = `
-SELECT id::text, unit_number, profile_picture_url
+SELECT id::text, name, unit_number, profile_picture_url
 FROM users
 WHERE is_directory_opt_in = TRUE AND status = 'active'
 ORDER BY unit_number ASC;
@@ -35,7 +36,7 @@ ORDER BY unit_number ASC;
 	for rows.Next() {
 		var du DirectoryUser
 		var profile *string
-		if err := rows.Scan(&du.ID, &du.UnitNumber, &profile); err != nil {
+		if err := rows.Scan(&du.ID, &du.Name, &du.UnitNumber, &profile); err != nil {
 			return nil, err
 		}
 		du.ProfilePictureURL = profile

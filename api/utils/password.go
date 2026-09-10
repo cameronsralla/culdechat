@@ -1,8 +1,21 @@
 package utils
 
 import (
+	"errors"
+	"unicode/utf8"
+
 	"golang.org/x/crypto/bcrypt"
 )
+
+const MinPasswordLength = 8
+
+// ValidatePassword enforces a minimum length. Complexity rules can be tightened later.
+func ValidatePassword(plain string) error {
+	if utf8.RuneCountInString(plain) < MinPasswordLength {
+		return errors.New("password must be at least 8 characters")
+	}
+	return nil
+}
 
 // HashPassword hashes a plaintext password using bcrypt.
 func HashPassword(plain string) (string, error) {

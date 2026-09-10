@@ -1,5 +1,5 @@
 # Cul-de-Chat: Functional Requirements Specification
-Last Updated: August 30, 2025
+Last Updated: September 9, 2026
 
 ## Project Vision & Guiding Principles
 In a world where social interaction has moved increasingly online, it has become paradoxically difficult to build meaningful relationships with the people right around us. This project is a direct response to the trend of social atomization, where local connections are often overlooked.
@@ -10,7 +10,7 @@ In a world where social interaction has moved increasingly online, it has become
 The app will serve as a private, modern "town square" exclusively for verified residents of the townhome complex. The primary goal is to foster community discovery and open interaction. The system is built around user-created, interest-based "Boards" rather than closed-off private groups, encouraging exploration and connection.
 
 ## 2. User Roles & Permissions
-**Resident (Standard User)**: A verified member of the community. Can create boards, post on boards, comment, react, subscribe to boards, and send direct messages.
+**Resident (Standard User)**: A verified member of the community. Can create boards, post on boards, comment, react, subscribe to boards, and send direct messages. Today one active user owns a unit. v1.2 adds household members invited by that unit's primary (see [backlog.md](../../docs/backlog.md)).
 
 **Business Admin (Apartment Staff)**: Manages the community. Has all Resident permissions plus:
 - Onboard and offboard users.
@@ -23,13 +23,14 @@ The app will serve as a private, modern "town square" exclusively for verified r
 ## 3. Onboarding & Offboarding Workflow
 ### Onboarding
 1. A resident provides their email address to the Business Admin.
-2. The Admin enters the email and associated unit number into the system, which sends a unique registration link to the resident.
-3. The Admin separately provides the resident with a temporary passcode.
-4. The resident clicks the link and enters the passcode to verify their identity and complete account setup.
+2. The Admin enters the email and associated unit number into the system, which issues a registration token and a temporary 10-character alphanumeric passcode.
+3. The instance sends the invite from one configured community mailbox over SMTP (apartment Microsoft 365 / Google Workspace, or a dedicated free Gmail/Outlook mailbox). There is no per-instance SaaS signup. Locally, Mailpit catches mail at `http://127.0.0.1:8025`.
+4. The admin API also returns the token and passcode so they can be shared by hand if email fails.
+5. The resident submits the token, passcode, chosen password, and display name to complete account setup.
 
 ### Offboarding
-1. When a resident moves out, the Business Admin deactivates their user account.
-2. This action permanently deletes the user's account and all associated personal data. The unit number is then free to be reassigned.
+1. When a resident moves out, the Business Admin offboards their user account.
+2. The account is soft-deleted (`inactive`) immediately so the unit number can be reassigned. Their sessions are revoked. Permanent deletion of personal data after 30 days is a later retention job.
 
 ## 4. Core Feature: Boards & Feeds
 - **Boards**: Residents can create public (within the community) "Boards" based on specific interests (e.g., "Dog Lovers," "Book Club," "For Sale").
@@ -38,8 +39,8 @@ The app will serve as a private, modern "town square" exclusively for verified r
 - **Bulletin Posts (Admin-Only)**: Business Admins can create special "Bulletin Posts" for official announcements. These posts are automatically pinned to the top of the General Feed, and comments are disabled.
 
 ## 5. Core Feature: User Profiles & Directory
-- **Profile Information**: Users can optionally add a profile picture.
-- **Directory & Privacy**: An opt-in directory allows residents to make their Name and Unit Number visible. If a user opts out, their details are hidden, but their account can still be referenced by unit number for messaging.
+- **Profile Information**: Users have a display name (set at registration) and can optionally add a profile picture.
+- **Directory & Privacy**: An opt-in directory allows residents to make their Name and Unit Number visible. If a user opts out, their name is hidden on posts (unit number remains) and they are omitted from the directory.
 
 ## 6. Communication
 **Direct Messaging (DM)**: Users can send private, one-on-one messages. A user can initiate a message by referencing another user's Unit Number, allowing essential communication even if the recipient is not in the public directory.
@@ -48,8 +49,12 @@ The app will serve as a private, modern "town square" exclusively for verified r
 For the initial version, users will report issues or inappropriate content by sending a direct message to a Business Admin account. A formal "report" button will be a future addition.
 
 ## 8. Development Phasing
-**Version 1.0 (MVP)**: User management, profiles, boards, feeds, posting, commenting, and reacting. Admin Bulletin Post feature.
+Priority and status live in [docs/backlog.md](../../docs/backlog.md).
 
-**Version 1.1 (Fast Follow)**: One-on-one Direct Messaging system.
+**Version 1.0 (MVP)**: User management, profiles (including photo upload on web), boards, feeds, posting, commenting, reacting, edit/delete, admin pin, invite copy + register deep link. Admin Bulletin Post feature.
+
+**Version 1.1 (Fast Follow)**: One-on-one Direct Messaging. DMs are person-to-person; messaging a unit number lands on that unit's primary.
+
+**Version 1.2 (Households)**: A primary resident per unit may invite family members onto that unit. Offboarding the primary offboards the household. The primary cannot be transferred.
 
 

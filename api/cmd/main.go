@@ -1,9 +1,16 @@
 package main
 
-import (
-	"log"
+// @title Cul-de-Chat API
+// @version 1.0
+// @description Private town-square API for a residential community.
+// @BasePath /api
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 
+import (
 	"context"
+	"log"
 
 	"github.com/cameronsralla/culdechat/connectors/postgres"
 	"github.com/cameronsralla/culdechat/models"
@@ -12,9 +19,7 @@ import (
 )
 
 func main() {
-	// Load .env from repository root before anything else
 	if _, err := utils.LoadRootDotEnv(); err != nil {
-		// Non-fatal: continue even if no .env was found
 		log.Printf("warning: %v", err)
 	}
 
@@ -28,13 +33,18 @@ func main() {
 		}
 	}()
 
-	// Initialize Postgres connection pool and ensure core tables
 	ctx := context.Background()
+	if err := utils.RequireJWTSecret(); err != nil {
+		log.Fatalf("jwt config: %v", err)
+	}
 	if _, err := postgres.Initialize(ctx); err != nil {
 		log.Fatalf("postgres init failed: %v", err)
 	}
-	if err := models.EnsureUsersTable(ctx); err != nil {
-		log.Fatalf("ensure users table failed: %v", err)
+	if err := models.Migrate(ctx); err != nil {
+		log.Fatalf("migrate failed: %v", err)
+	}
+	if err := models.BootstrapAdmin(ctx); err != nil {
+		log.Fatalf("bootstrap admin failed: %v", err)
 	}
 
 	router := routes.NewRouter()

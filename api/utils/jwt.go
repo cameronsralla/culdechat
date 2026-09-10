@@ -18,9 +18,7 @@ type JWTConfig struct {
 func getJWTConfig() JWTConfig {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		// For local dev fallback, but warn via logs.
-		Warnf("JWT_SECRET not set; using insecure default for development")
-		secret = "dev-insecure-secret-change-me"
+		secret = InsecureJWTSecret
 	}
 	issuer := os.Getenv("JWT_ISSUER")
 	if issuer == "" {
@@ -28,7 +26,6 @@ func getJWTConfig() JWTConfig {
 	}
 	ttlSeconds := 3600 // 1 hour default
 	if v := os.Getenv("JWT_ACCESS_TTL_SECONDS"); v != "" {
-		// ignore parse errors silently, just use default
 		if d, err := time.ParseDuration(v + "s"); err == nil {
 			ttlSeconds = int(d.Seconds())
 		}
@@ -42,18 +39,20 @@ func getJWTConfig() JWTConfig {
 
 // Claims represents our JWT claims.
 type Claims struct {
-	UserID string `json:"uid"`
-	Unit   string `json:"unit"`
+	UserID  string `json:"uid"`
+	Unit    string `json:"unit"`
+	IsAdmin bool   `json:"adm"`
 	jwt.RegisteredClaims
 }
 
-// GenerateAccessToken creates a signed JWT for the given user ID and unit number.
-func GenerateAccessToken(userID string, unit string) (string, error) {
+// GenerateAccessToken creates a signed JWT for the given user ID, unit number, and admin flag.
+func GenerateAccessToken(userID string, unit string, isAdmin bool) (string, error) {
 	cfg := getJWTConfig()
 	now := time.Now()
 	claims := Claims{
-		UserID: userID,
-		Unit:   unit,
+		UserID:  userID,
+		Unit:    unit,
+		IsAdmin: isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    cfg.Issuer,
 			IssuedAt:  jwt.NewNumericDate(now),

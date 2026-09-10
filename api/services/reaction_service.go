@@ -12,46 +12,54 @@ import (
 type ReactionService struct{}
 
 type ReactInput struct {
-	PostID string `json:"post_id"`
-	Type   string `json:"type"`
+	Type string `json:"type" example:"like"`
 }
 
 type ReactionCountDTO struct {
-	Type  string `json:"type"`
-	Count int64  `json:"count"`
+	Type  string `json:"type" example:"like"`
+	Count int64  `json:"count" example:"3"`
 }
 
-func (s *ReactionService) Upsert(ctx context.Context, userID uuid.UUID, in ReactInput) error {
+func allowedReactionType(t string) bool {
+	switch t {
+	case "like", "love", "laugh", "wow", "sad", "angry":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *ReactionService) Upsert(ctx context.Context, userID uuid.UUID, postID uuid.UUID, in ReactInput) error {
 	in.Type = strings.TrimSpace(strings.ToLower(in.Type))
-	if in.PostID == "" || in.Type == "" {
-		return errors.New("post_id and type are required")
+	if in.Type == "" {
+		return errors.New("type is required")
 	}
-	postUUID, err := uuid.Parse(in.PostID)
+	if !allowedReactionType(in.Type) {
+		return errors.New("reaction type must be one of like, love, laugh, wow, sad, angry")
+	}
+	post, err := models.GetFeedPostByID(ctx, postID)
 	if err != nil {
-		return errors.New("invalid post_id")
-	}
-	if err := models.EnsureReactionsTable(ctx); err != nil {
 		return err
 	}
-	r := &models.Reaction{PostID: postUUID, UserID: userID, Type: in.Type}
+	if post == nil {
+		return errors.New("post not found")
+	}
+	r := &models.Reaction{PostID: postID, UserID: userID, Type: in.Type}
 	return models.UpsertReaction(ctx, r)
 }
 
-func (s *ReactionService) Remove(ctx context.Context, userID uuid.UUID, postIDStr string) error {
-	postUUID, err := uuid.Parse(postIDStr)
+func (s *ReactionService) Remove(ctx context.Context, userID uuid.UUID, postID uuid.UUID) error {
+	post, err := models.GetFeedPostByID(ctx, postID)
 	if err != nil {
-		return errors.New("invalid post_id")
-	}
-	if err := models.EnsureReactionsTable(ctx); err != nil {
 		return err
 	}
-	return models.RemoveReaction(ctx, postUUID, userID)
+	if post == nil {
+		return errors.New("post not found")
+	}
+	return models.RemoveReaction(ctx, postID, userID)
 }
 
 func (s *ReactionService) CountByPost(ctx context.Context, postID uuid.UUID) ([]ReactionCountDTO, error) {
-	if err := models.EnsureReactionsTable(ctx); err != nil {
-		return nil, err
-	}
 	counts, err := models.CountReactionsByPost(ctx, postID)
 	if err != nil {
 		return nil, err

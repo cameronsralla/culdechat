@@ -25,12 +25,18 @@ func main() {
 	}()
 
 	ctx := context.Background()
+	if err := utils.RequireJWTSecret(); err != nil {
+		log.Fatalf("jwt config: %v", err)
+	}
 	if _, err := postgres.Initialize(ctx); err != nil {
 		log.Fatalf("postgres init failed: %v", err)
 	}
 
-	if err := models.EnsureUsersTable(ctx); err != nil {
-		log.Fatalf("ensure users table failed: %v", err)
+	if err := models.Migrate(ctx); err != nil {
+		log.Fatalf("migrate failed: %v", err)
+	}
+	if err := models.BootstrapAdmin(ctx); err != nil {
+		log.Fatalf("bootstrap admin failed: %v", err)
 	}
 
 	utils.Infof("database migrations completed successfully")

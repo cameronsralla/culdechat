@@ -1,6 +1,7 @@
 {
   "info": {
     "name": "culdechat",
+    "description": "Prefer the generated Swagger UI at http://localhost:8080/api/docs/index.html. This collection is a small smoke set.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -15,50 +16,12 @@
   ],
   "item": [
     {
-      "name": "Health (/api)",
+      "name": "Health",
       "request": {
         "method": "GET",
         "header": [],
-        "url": {
-          "raw": "{{culdechatBase}}/api/health",
-          "host": [
-            "{{culdechatBase}}"
-          ],
-          "path": [
-            "api",
-            "health"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Register",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"user@example.com\",\n  \"unit_number\": \"101\",\n  \"password\": \"changeme\"\n}"
-        },
-        "url": {
-          "raw": "{{culdechatBase}}/api/auth/register",
-          "host": [
-            "{{culdechatBase}}"
-          ],
-          "path": [
-            "api",
-            "auth",
-            "register"
-          ]
-        }
-      },
-      "response": []
+        "url": "{{culdechatBase}}/api/health"
+      }
     },
     {
       "name": "Login",
@@ -72,19 +35,9 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"changeme\"\n}"
+          "raw": "{\n  \"email\": \"admin@culdechat.local\",\n  \"password\": \"changeme123\"\n}"
         },
-        "url": {
-          "raw": "{{culdechatBase}}/api/auth/login",
-          "host": [
-            "{{culdechatBase}}"
-          ],
-          "path": [
-            "api",
-            "auth",
-            "login"
-          ]
-        }
+        "url": "{{culdechatBase}}/api/auth/login"
       },
       "event": [
         {
@@ -101,8 +54,7 @@
             ]
           }
         }
-      ],
-      "response": []
+      ]
     },
     {
       "name": "Me",
@@ -111,25 +63,24 @@
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer {{token}}",
-            "type": "text"
+            "value": "Bearer {{token}}"
           }
         ],
-        "url": {
-          "raw": "{{culdechatBase}}/api/auth/me",
-          "host": [
-            "{{culdechatBase}}"
-          ],
-          "path": [
-            "api",
-            "auth",
-            "me"
-          ]
-        }
-      },
-      "response": []
+        "url": "{{culdechatBase}}/api/auth/me"
+      }
+    },
+    {
+      "name": "General feed",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{culdechatBase}}/api/posts"
+      }
     }
   ]
 }
-
-

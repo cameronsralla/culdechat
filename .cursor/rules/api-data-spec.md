@@ -1,32 +1,49 @@
 # Cul-de-Chat: API & Data Specifications
-Last Updated: August 30, 2025
+Last Updated: September 9, 2026
+
+Interactive, generated API docs live with the server at `/api/docs/index.html` when `CULDECHAT_DOCS=true`. They are produced from handler annotations via `make docs`. Treat Swagger as the request/response source of truth; this file is the schema and behavior summary.
 
 ## 1. Database Schema (PostgreSQL)
-A relational database like PostgreSQL is perfect for this. Here’s a logical breakdown of the tables we'll need for the MVP. We'll use a simplified notation here to show columns and relationships.
 
 Assumptions:
 - `id` is the primary key on entity tables
-- `created_at` and `updated_at` timestamps exist on all tables
+- `created_at` and `updated_at` timestamps exist on all entity tables
 
 ### users
 Stores information about each resident.
 
 - `id` (uuid) - Primary Key
-- `unit_number` (varchar) - The resident's unit number.
+- `unit_number` (varchar) - The resident's unit number. Unique among `active` and `pending` users so a unit can be reassigned after offboarding.
 - `email` (varchar, unique) - Used for login and notifications.
-- `hashed_password` (varchar) - The securely hashed password.
+- `name` (varchar) - Display name, set when the resident completes registration.
+- `hashed_password` (varchar) - The securely hashed password (placeholder hash until registration is completed).
 - `profile_picture_url` (varchar, nullable) - Link to their profile picture.
-- `is_directory_opt_in` (boolean, default: false) - If true, their name/unit are public.
+- `is_directory_opt_in` (boolean, default: false) - If true, their name/unit are public in the directory.
 - `is_admin` (boolean, default: false) - Differentiates Business Admins.
-- `status` (varchar, default: 'active') - Can be active, inactive (soft delete), pending.
+- `status` (varchar, default: 'active') - `active`, `inactive` (soft delete), or `pending`.
+- `invite_token` (varchar, nullable, unique) - SHA-256 hex of the registration token. Cleared after completion.
+- `passcode_hash` (varchar, nullable) - bcrypt hash of the invite passcode.
+- `invite_expires_at` (timestamptz, nullable) - Invite TTL (7 days).
+
+### refresh_tokens
+Hashed refresh sessions. Revoked on logout, logout-all, password change, and offboard.
+
+- `id` (uuid) - Primary Key
+- `user_id` (uuid) - Foreign Key to `users.id`
+- `token_hash` (varchar, unique) - SHA-256 of the opaque refresh token
+- `expires_at` (timestamptz) - 30 days from issue
+- `revoked_at` (timestamptz, nullable)
+- `created_at` (timestamptz)
 
 ### boards
 Stores the user-created communities.
 
 - `id` (uuid) - Primary Key
 - `creator_id` (uuid) - Foreign Key to `users.id`
-- `name` (varchar) - The name of the board (e.g., "Dog Lovers").
+- `name` (varchar, unique) - The name of the board (e.g., "Dog Lovers").
 - `description` (text, nullable) - A short description of the board.
+
+Creating a board auto-subscribes the creator.
 
 ### posts
 The individual threads started on a board.
@@ -36,8 +53,8 @@ The individual threads started on a board.
 - `board_id` (uuid) - Foreign Key to `boards.id`
 - `title` (varchar) - The title of the post.
 - `content` (text) - The body of the post.
-- `post_type` (varchar, default: 'standard') - Can be `standard` or `bulletin`.
-- `is_pinned` (boolean, default: false) - For admin posts.
+- `post_type` (varchar, default: `standard`) - `standard` or `bulletin`.
+- `is_pinned` (boolean, default: false) - Pinned posts sort first on feeds. Bulletin posts are always pinned.
 
 ### comments
 Replies to a specific post.
@@ -47,6 +64,8 @@ Replies to a specific post.
 - `post_id` (uuid) - Foreign Key to `posts.id`
 - `content` (text) - The body of the comment.
 
+Comments are rejected on bulletin posts.
+
 ### board_subscriptions (junction)
 Tracks which users are subscribed to which boards.
 
@@ -55,21 +74,40 @@ Tracks which users are subscribed to which boards.
 - Primary Key: composite (`user_id`, `board_id`)
 
 ### post_reactions (junction)
-Tracks user reactions to posts.
+Tracks user reactions to posts. One reaction per user per post.
 
+- `id` (uuid) - Primary Key
 - `user_id` (uuid) - Foreign Key to `users.id`
 - `post_id` (uuid) - Foreign Key to `posts.id`
-- `reaction_type` (varchar) - The emoji used (e.g., 'like', 'laugh').
-- Primary Key: composite (`user_id`, `post_id`)
+- `type` (varchar) - One of `like`, `love`, `laugh`, `wow`, `sad`, `angry`.
+- Unique: (`post_id`, `user_id`)
 
 ---
 
 ## 2. REST API Endpoints
 
+All community endpoints require `Authorization: Bearer <jwt>` unless noted. Errors use `{ "error": "message" }`.
+
+List endpoints that return posts are cursor-paginated: `limit` (default 20, max 50) and opaque `cursor`. Response includes `next_page_cursor` when more rows exist. Pinned posts appear first, then newest.
+
+On posts and comments, `author.name` is only present when that user has opted into the directory. `unit_number` is always shown.
+
+### Meta
+
+#### GET /api/health
+Public. `{ "status": "ok" }`
+
+#### GET /api/docs/*
+Swagger UI, only when `CULDECHAT_DOCS=true`.
+
+Login, complete-registration, and refresh are rate limited (5/15min for login, 10/15min for complete-registration and refresh; disabled when `CULDECHAT_RATE_LIMIT=off`, which local compose sets). Passwords must be at least 8 characters. Invite passcodes are 10 characters from `abcdefghijkmnpqrstuvwxyz23456789`. Access tokens are 1-hour JWTs; `refresh_token` is an opaque 30-day token returned on login, complete-registration, and refresh. Auth middleware reloads the user from the database and requires `status=active`. Residents may post only on boards they are subscribed to (admins may post anywhere). `my_reaction` is included on feed and post detail. JSON bodies are capped at 2 MiB. Profile picture URLs must be `http(s)` or `/api/media/...`. Unique constraint violations return 409 `"already exists"`.
+
 ### Authentication
 
 #### POST /api/auth/register
-Business Logic: An admin-only endpoint used to initiate the onboarding process for a new resident. It creates a user in a pending state and sends the registration email.
+Admin-only. Creates a `pending` user, emails the invite when SMTP is configured, and always returns the token and passcode so the admin can share them if mail fails. Re-inviting an existing pending email refreshes the token and passcode.
+
+Local compose sends through Mailpit (`http://127.0.0.1:8025`). A real instance uses one community mailbox over SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, optional `SMTP_USER`/`SMTP_PASS`). `email_sent` is true when the message was accepted by the mail server. Invites go through the shared mailer (`InviteMail` → `Mailer.Send`); other outbound messages should do the same.
 
 Request Body:
 
@@ -84,12 +122,33 @@ Response Body (201 Created):
 
 ```json
 {
-  "message": "Registration link sent successfully to new.resident@example.com"
+  "message": "Invite emailed to new.resident@example.com",
+  "email": "new.resident@example.com",
+  "registration_token": "uuid",
+  "passcode": "a3k9wm2p7x",
+  "invite_expires_at": "timestamp",
+  "email_sent": true
 }
 ```
 
+#### POST /api/auth/complete-registration
+Public. Resident sets name and password using the stub token and passcode, then receives access and refresh tokens.
+
+Request Body:
+
+```json
+{
+  "token": "uuid",
+  "passcode": "a3k9wm2p7x",
+  "password": "user_password",
+  "name": "Alex Rivera"
+}
+```
+
+Response Body (200 OK): same as login.
+
 #### POST /api/auth/login
-Business Logic: Authenticates a user with their email and password. If successful, it returns a JWT for session management.
+Public. Authenticates an `active` user.
 
 Request Body:
 
@@ -105,41 +164,41 @@ Response Body (200 OK):
 ```json
 {
   "token": "your_jwt_token_here",
+  "refresh_token": "opaque_refresh_token",
   "user": {
     "id": "user_uuid",
-    "unit_number": "101"
+    "name": "Alex Rivera",
+    "unit_number": "101",
+    "is_admin": false
   }
 }
 ```
 
+#### POST /api/auth/refresh
+Public. Rotates the refresh token and issues a new access JWT. Body: `{ "refresh_token": "..." }`. Response: same as login.
+
+#### POST /api/auth/logout
+Public. Revokes one refresh token. Body: `{ "refresh_token": "..." }`. 204.
+
+#### POST /api/auth/logout-all
+Revokes every refresh token for the current user. 204.
+
+#### POST /api/auth/change-password
+Body: `{ "current_password": "...", "new_password": "..." }`. Revokes all refresh tokens. 204.
+
+#### GET /api/auth/me
+Returns the current user.
+
 ### Boards
 
 #### GET /api/boards
-Business Logic: Fetches a list of all available boards in the community.
+Lists all boards, including `subscriber_count` and `is_subscribed` for the current user.
 
-Request Body: None
-
-Response Body (200 OK):
-
-```json
-[
-  {
-    "id": "board_uuid_1",
-    "name": "Dog Lovers",
-    "description": "A place for all things canine.",
-    "subscriber_count": 25
-  },
-  {
-    "id": "board_uuid_2",
-    "name": "For Sale",
-    "description": "Buy and sell items with your neighbors.",
-    "subscriber_count": 40
-  }
-]
-```
+#### GET /api/boards/{boardId}
+One board with `subscriber_count` and `is_subscribed`.
 
 #### POST /api/boards
-Business Logic: Allows a logged-in user to create a new board.
+Creates a board. The creator is subscribed automatically.
 
 Request Body:
 
@@ -150,76 +209,19 @@ Request Body:
 }
 ```
 
-Response Body (201 Created):
-
-```json
-{
-  "id": "new_board_uuid",
-  "name": "Book Club",
-  "description": "Let's read and discuss!",
-  "creator_id": "user_uuid"
-}
-```
-
 #### POST /api/boards/{boardId}/subscribe
-Business Logic: Allows the logged-in user to subscribe to (or unsubscribe from) a specific board.
-
-Request Body: None
-
-Response Body (200 OK):
-
-```json
-{
-  "message": "Successfully subscribed to the board."
-}
-```
+Toggles subscription. Response: `{ "subscribed": true, "message": "Successfully subscribed to the board." }`
 
 ### Posts
 
 #### GET /api/posts
-Business Logic: This is the main endpoint for the "General Feed." It fetches a paginated list of all posts from all boards, sorted by creation date. Pinned bulletin posts appear first.
-
-Request Body: None
-
-Response Body (200 OK):
-
-```json
-{
-  "posts": [
-    {
-      "id": "post_uuid_1",
-      "title": "Pool Maintenance on Friday",
-      "author": { "id": "admin_uuid", "unit_number": "Admin" },
-      "board": { "id": "board_uuid_general", "name": "Announcements" },
-      "comment_count": 0,
-      "reaction_count": 5,
-      "is_pinned": true,
-      "created_at": "timestamp"
-    },
-    {
-      "id": "post_uuid_2",
-      "title": "Anyone have a ladder I can borrow?",
-      "author": { "id": "user_uuid", "unit_number": "101" },
-      "board": { "id": "board_uuid_ask", "name": "Neighborly Help" },
-      "comment_count": 3,
-      "reaction_count": 8,
-      "is_pinned": false,
-      "created_at": "timestamp"
-    }
-  ],
-  "next_page_cursor": "encrypted_cursor_for_pagination"
-}
-```
+General feed. Pinned posts first, then newest. Each item includes title, snippet, author, board, counts, `post_type`, `is_pinned`, `created_at`.
 
 #### GET /api/boards/{boardId}/posts
-Business Logic: Fetches a paginated list of posts from a specific board.
-
-Request Body: None
-
-Response Body (200 OK): Same structure as `/api/posts` but filtered for the board.
+Same page structure, filtered to one board.
 
 #### POST /api/boards/{boardId}/posts
-Business Logic: Creates a new post on a specific board. Admins can additionally set `post_type` and `is_pinned`.
+Creates a post. Admins may set `post_type` to `bulletin` (auto-pinned, comments disabled) or `is_pinned` to pin a standard post.
 
 Request Body:
 
@@ -230,60 +232,55 @@ Request Body:
 }
 ```
 
-Response Body (201 Created):
-
-```json
-{
-  "id": "new_post_uuid",
-  "title": "New book for September!",
-  "content": "We'll be reading 'The Midnight Library'. First meeting is next Tuesday.",
-  "author_id": "user_uuid",
-  "board_id": "board_uuid_book_club"
-}
-```
-
 #### GET /api/posts/{postId}
-Business Logic: Fetches the full details of a single post, including all its comments.
+Full post, comments, reaction counts, and `my_reaction`. Bulletin posts return `comments_disabled: true` and an empty comments list.
 
-Request Body: None
+#### PATCH /api/posts/{postId}
+Author or admin. Updatable: `title`, `content`, `is_pinned` (admin). Bulletins cannot be unpinned. Title ≤200, content ≤10000.
 
-Response Body (200 OK):
-
-```json
-{
-  "id": "post_uuid_2",
-  "title": "Anyone have a ladder I can borrow?",
-  "content": "Just need it for an hour to change a lightbulb!",
-  "author": { "id": "user_uuid", "unit_number": "101" },
-  "comments": [
-    {
-      "id": "comment_uuid_1",
-      "content": "I have one you can use!",
-      "author": { "id": "user_uuid_neighbor", "unit_number": "205" }
-    }
-  ]
-}
-```
+#### DELETE /api/posts/{postId}
+Author or admin. 204.
 
 #### POST /api/posts/{postId}/comments
-Business Logic: Adds a new comment to a specific post.
+Adds a comment. Forbidden on bulletin posts. Content ≤2000.
 
-Request Body:
+#### GET /api/posts/{postId}/comments
+Chronological comments.
 
-```json
-{
-  "content": "Awesome, I'll swing by in 10 minutes!"
-}
-```
+#### PATCH /api/posts/{postId}/comments/{commentId}
+Author or admin. Body: `{ "content": "..." }`.
 
-Response Body (201 Created):
+#### DELETE /api/posts/{postId}/comments/{commentId}
+Author or admin. 204.
 
-```json
-{
-  "id": "new_comment_uuid",
-  "content": "Awesome, I'll swing by in 10 minutes!",
-  "author_id": "user_uuid"
-}
-```
+#### PUT /api/posts/{postId}/reactions
+Sets the current user's reaction (`type` required). 204 No Content.
 
+#### DELETE /api/posts/{postId}/reactions
+Removes the current user's reaction. 204 No Content.
 
+### Profile & Directory
+
+#### GET /api/profile/me
+#### PATCH /api/profile/me
+Updatable fields: `name` (≤80), `profile_picture_url` (`http(s)` or `/api/media/...`), `directory_opt_in`.
+
+#### POST /api/profile/me/photo
+Multipart field `photo`. jpeg/png/webp, max 2 MiB. Stores under `CULDECHAT_UPLOAD_DIR` and sets `profile_picture_url` to `/api/media/profile/{filename}`.
+
+#### GET /api/media/profile/{filename}
+Authenticated. Serves an uploaded profile photo.
+
+#### GET /api/directory
+Active users who opted in: `id`, `name`, `unit_number`, `profile_picture_url`.
+
+### Admin
+
+#### GET /api/admin/users
+Roster of residents: id, email, name, unit, status, is_admin, directory opt-in.
+
+#### POST /api/admin/users/{userId}/offboard
+Soft-deletes a non-admin user (`status=inactive`) so the unit can be reassigned. Revokes their refresh tokens; subsequent requests with an old access JWT fail because auth reloads status from the database. Hard delete of personal data remains a later retention job.
+
+### Local bootstrap
+If no admin exists, migrate/API startup will create one when `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` are set (`BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_UNIT` optional). This is a development stub until a real admin lifecycle exists.

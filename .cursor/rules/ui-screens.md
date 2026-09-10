@@ -1,5 +1,7 @@
 # Cul-de-Chat: UI Screens Specification
-Last Updated: August 30, 2025
+Last Updated: September 9, 2026
+
+The Expo app lives in `mobile/`. One codebase: Expo web is the desktop experience; the same screens ship to iOS/Android. `AppShell` uses a left sidebar when the window is ≥800px and bottom tabs when it is narrower. Visual language lives in `src/theme/theme.ts`. Screens are wired to the live API: login, complete registration (`/register?token=` pre-fills), feed, boards, board detail, create board/post, post detail (comments, reactions, edit/delete, admin pin), directory with photos, You (profile), and Admin (`/admin`, nav item and page only for `is_admin`).
 
 ## 1. Login Screen
 Path: `/login`
@@ -16,6 +18,18 @@ Entry point for existing users. Simple and clean, featuring:
 - On success, they are redirected to the General Feed (`/`).
 - On failure, an error message appears (e.g., "Invalid email or password").
 
+## 1b. Complete Registration Screen
+Path: `/register`
+
+### Purpose & Layout
+First-time residents finishing an admin invite.
+- Token (from the invite email or `/register?token=` link) and 10-character passcode fields.
+- Display name, password (at least 8 characters), and a submit button.
+
+### User Interactions
+- On success, they are logged in and redirected to the General Feed (`/`).
+- On failure, show invalid/expired invite errors.
+
 ## 2. General Feed (Home Screen)
 Path: `/`
 
@@ -28,10 +42,13 @@ Main "town square" and the first screen after login.
   - The board it was posted on (e.g., "in Dog Lovers").
   - Post title.
   - Snippet of the post content.
+  - Relative timestamp.
   - Counts for comments and reactions.
+  - Badge: Bulletin vs Pinned (not the same thing).
 - Floating Action Button (FAB): Circular "+" button bottom-right.
 
 ### User Interactions
+- Pull to refresh. Empty and error states offer a retry or write-a-post action.
 - Infinite scroll through the feed.
 - Tap a Post Card → Post Detail (`/posts/{postId}`).
 - Tap FAB (+) → Create Post (`/posts/new`).
@@ -54,6 +71,21 @@ Discover all communities within the app.
 - Tap a Board Name → Board Feed (`/boards/{boardId}`).
 - Tap "Create New Board" → Create Board (`/boards/new`).
 
+## 3b. Board Feed
+Path: `/boards/{boardId}`
+
+Posts on one board, subscribe toggle, and a create-post action when subscribed.
+
+## 3c. Create Board
+Path: `/boards/new`
+
+Name and optional description. Creator is subscribed. Redirects to the new board feed.
+
+## 3d. Directory
+Path: `/directory`
+
+Opted-in neighbors: photo, name, and unit. Pull to refresh.
+
 ## 4. Post Detail Screen
 Path: `/posts/{postId}`
 
@@ -68,6 +100,8 @@ Displays a single post and its entire comment thread.
 - Tap an emoji to add/remove reaction to the main post.
 - Type in the comment input and hit "Send" to add a comment.
 - Scroll through all existing comments.
+- Author (or admin) can edit or delete the post. Admins can pin/unpin a standard post. Bulletins stay pinned and comments stay off.
+- Comment author can edit; author or admin can delete.
 
 ## 5. Create Post Screen
 Path: `/posts/new`
@@ -82,5 +116,19 @@ Form for creating a new post.
 ### User Interactions
 - Select a board, fill title and content, tap "Post."
 - On success, redirect to the new post's detail screen (`/posts/{newPostId}`).
+- Admins can mark the post as a bulletin.
+
+## 6. You
+Path: `/you`
+
+Profile photo (web upload), name, directory opt-in, password change, logout.
+
+## 7. Admin
+Path: `/admin`
+
+Visible only to users with `is_admin`. The Admin nav item is omitted for residents. Hitting `/admin` without the role redirects home.
+
+- Invite a resident (copy token, passcode, and `/register?token=` link).
+- Roster with offboard for non-admins.
 
 
