@@ -1,29 +1,44 @@
-## Cul-de-Chat
+<p align="center">
+  <img src="assets/branding/logo.jpg" alt="Cul-de-Chat logo" width="120" />
+</p>
 
-Private, modern town square for apartments and small communities. Community-driven and non‑commercial; focused on helping neighbors connect.
+<h1 align="center">Cul-de-Chat</h1>
 
-### Vision
-**The modern digital town square for bringing local communities together.**
+<p align="center">
+  <strong>A modern digital town square for bringing local communities together.</strong>
+</p>
 
-Create a private, verified space for residents to discover boards by interest, post and comment openly, and strengthen local connection. Admins can publish official bulletins that stay pinned to the top of the feed.
+Cul-de-Chat is a free, open-source, non-commercial app for **one place at a time** — an apartment building, townhome complex, HOA, dorm, or similar community. It gives neighbors a private, invite-only space to know each other, coordinate, and build real local connection.
 
-Authoritative vision/mission: [docs/vision.md](docs/vision.md). Operator docs (stub): [docs/admin-guide.md](docs/admin-guide.md). Feature wishlist: [docs/feature-backlog.md](docs/feature-backlog.md). Non-goals: [docs/non-goals.md](docs/non-goals.md). Competitors: [docs/competitive-landscape.md](docs/competitive-landscape.md). UI direction: [docs/design-direction.md](docs/design-direction.md).
+It is meant to replace the messy mix of building group chats, HOA email, and city-scale social apps with something smaller and more trusted: a shared feed and boards, a resident directory, private messages, and light admin tools — owned and run by the community, not monetized with ads or engagement ranking.
 
-### Core Tech
+**Who it’s for:** residents first. An admin (or steward) invites people in and keeps membership tidy; success is neighbors actually using it to meet, help, and show up for each other.
+
+**What it’s not:** a global social network, a Nextdoor clone, or property-management software. One instance serves one community. No cross-community feed. No ads.
+
+---
+
+### Product docs
+- Vision & mission: [docs/vision.md](docs/vision.md)
+- Feature backlog: [docs/feature-backlog.md](docs/feature-backlog.md)
+- Non-goals: [docs/non-goals.md](docs/non-goals.md)
+- Competitive landscape: [docs/competitive-landscape.md](docs/competitive-landscape.md)
+- Design direction: [docs/design-direction.md](docs/design-direction.md)
+- Admin guide (stub): [docs/admin-guide.md](docs/admin-guide.md)
+
+### What’s in today
+- **Boards & square feed** — interest boards; chronological feed across the community
+- **Posts, comments, reactions** — open discussion inside the walls
+- **Admin bulletins** — pinned announcements
+- **Directory** — opt-in neighbor listing by name/unit (hidden residents still reachable by unit)
+- **Direct messages** — private 1:1 messaging between neighbors
+
+### Core tech
 - **Backend**: Go (Gin)
-- **API**: REST + Socket.IO for real-time
+- **API**: REST (+ Socket.IO planned for real-time)
 - **Database**: PostgreSQL
 - **Frontend**: React Native (Expo, in `mobile/`)
 - **Deployment**: Docker
-
-### MVP Features
-- **Boards & General Feed**: Interest-based boards; feed aggregates posts from all boards.
-- **Posts, Comments, Reactions**: Threaded discussions and emoji reactions.
-- **Admin Bulletins**: Pinned announcements; comments disabled.
-- **Profiles & Directory**: Optional profile pictures; opt-in directory by name/unit.
-
-### Fast Follow
-- **Direct Messages**: One-on-one private messaging (v1.1).
 
 ### Specifications
 Authoritative, living specs are kept in `.cursor/rules/`:
@@ -31,7 +46,7 @@ Authoritative, living specs are kept in `.cursor/rules/`:
 - [Technical Requirements Specification](.cursor/rules/technical-spec.md)
 - [API & Data Specifications](.cursor/rules/api-data-spec.md)
 - [UI Screens Specification](.cursor/rules/ui-screens.md)
-- [Backlog](docs/backlog.md)
+- [Engineering backlog](docs/backlog.md)
 
 Generated HTTP docs (Swagger UI) are served at `/api/docs/index.html` when `CULDECHAT_DOCS=true`. Regenerate with `make docs` after changing handlers.
 
@@ -58,4 +73,3 @@ CULDECHAT_DOMAIN=your.domain docker compose -f infra/dev/docker-compose.yml --pr
 
 ### License
 See [LICENSE](./LICENSE).
-
