@@ -1,10 +1,12 @@
 # Cul-de-Chat: Functional Requirements Specification
-Last Updated: September 9, 2026
+Last Updated: September 30, 2026
 
 ## Project Vision & Guiding Principles
+Authoritative vision and mission live in [docs/vision.md](../../docs/vision.md). Summary:
+
 In a world where social interaction has moved increasingly online, it has become paradoxically difficult to build meaningful relationships with the people right around us. This project is a direct response to the trend of social atomization, where local connections are often overlooked.
 
-"Cul-de-Chat" is a non-commercial, community-driven project designed to create a private, modern 'town square' for our neighborhood. Its purpose is not to generate profit, but to leverage technology to help reverse the trend of local disconnection. We aim to provide a tool that fosters genuine connection, helps neighbors find common ground, and adds a little more value and texture to our everyday lives.
+"Cul-de-Chat" is the modern digital town square for bringing local communities together — a non-commercial, community-driven project for our neighborhood. Its purpose is not to generate profit, but to leverage technology to help reverse the trend of local disconnection — a trusted space for verified residents to communicate, find common ground, and build community where they live.
 
 ## 1. Core Concept & Philosophy
 The app will serve as a private, modern "town square" exclusively for verified residents of the townhome complex. The primary goal is to foster community discovery and open interaction. The system is built around user-created, interest-based "Boards" rather than closed-off private groups, encouraging exploration and connection.
@@ -43,7 +45,7 @@ The app will serve as a private, modern "town square" exclusively for verified r
 - **Directory & Privacy**: An opt-in directory allows residents to make their Name and Unit Number visible. If a user opts out, their name is hidden on posts (unit number remains) and they are omitted from the directory.
 
 ## 6. Communication
-**Direct Messaging (DM)**: Users can send private, one-on-one messages. A user can initiate a message by referencing another user's Unit Number, allowing essential communication even if the recipient is not in the public directory.
+**Direct Messaging (DM)**: Users send private, one-on-one text messages. There is a single thread per pair of people. A **Messages** tab lists conversations; a plus button starts a new chat by searching visible directory neighbors (name/unit) or unit numbers for residents who stay hidden. Messaging a unit reaches that unit's primary resident. Directory opt-out hides name and photo; unit remains reachable. Conversations are created when the first message is sent. Admins participate as ordinary users. No media, edit, or delete in the first slice; polling refreshes open threads.
 
 ## 7. Moderation (MVP)
 For the initial version, users will report issues or inappropriate content by sending a direct message to a Business Admin account. A formal "report" button will be a future addition.
@@ -53,7 +55,7 @@ Priority and status live in [docs/backlog.md](../../docs/backlog.md).
 
 **Version 1.0 (MVP)**: User management, profiles (including photo upload on web), boards, feeds, posting, commenting, reacting, edit/delete, admin pin, invite copy + register deep link. Admin Bulletin Post feature.
 
-**Version 1.1 (Fast Follow)**: One-on-one Direct Messaging. DMs are person-to-person; messaging a unit number lands on that unit's primary.
+**Version 1.1 (Fast Follow)**: One-on-one Direct Messaging (inbox tab, search by person/unit, create-on-send). Realtime and unread badge follow.
 
 **Version 1.2 (Households)**: A primary resident per unit may invite family members onto that unit. Offboarding the primary offboards the household. The primary cannot be transferred.
 

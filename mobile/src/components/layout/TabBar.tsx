@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStyles, useTheme, type Theme } from '../../theme';
 import { AppText } from '../ui/AppText';
+import { TabIcon } from '../ui/Icon';
 import { navItemsFor, type TabId } from './nav';
 
 export type { TabId };
@@ -10,15 +11,18 @@ const stylesFor = (t: Theme) => ({
   bar: {
     flexDirection: 'row' as const,
     borderTopWidth: t.layout.border,
-    borderTopColor: t.colors.line,
+    borderTopColor: t.colors.lineSoft,
     backgroundColor: t.colors.surface,
     paddingTop: t.space.sm,
   },
-  item: { flex: 1, alignItems: 'center' as const, gap: t.space.xxs },
-  icon: { fontSize: t.layout.navIcon, lineHeight: t.layout.navIcon + 4 },
-  idle: { color: t.colors.muted },
-  active: { color: t.colors.brandDark, fontFamily: t.type.subtitle.fontFamily },
-  activeLabel: { fontFamily: t.type.label.fontFamily },
+  item: { flex: 1, alignItems: 'center' as const, gap: 1 },
+  activeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: t.colors.brand,
+    marginTop: 2,
+  },
 });
 
 export function TabBar({
@@ -45,10 +49,11 @@ export function TabBar({
             onPress={() => onChange(tab.id)}
             style={styles.item}
           >
-            <AppText style={[styles.icon, active ? styles.active : styles.idle]}>{tab.icon}</AppText>
-            <AppText variant="caption" tone={active ? 'brand' : 'muted'} style={active ? styles.activeLabel : undefined}>
+            <TabIcon tab={tab.id} active={active} />
+            <AppText variant="caption" tone={active ? 'brand' : 'muted'}>
               {tab.label}
             </AppText>
+            {active ? <View style={styles.activeDot} /> : <View style={{ height: 6 }} />}
           </Pressable>
         );
       })}

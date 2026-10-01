@@ -15,10 +15,12 @@ export default function MainLayout() {
   }
 
   const tab = tabFromPath(pathname);
-  const subtitle = user.name?.trim() ? user.name : `Unit ${user.unit_number}`;
+  const userLabel = user.name?.trim()
+    ? `${user.name} · Unit ${user.unit_number}`
+    : `Unit ${user.unit_number}`;
 
   return (
-    <AppShell tab={tab} subtitle={subtitle} isAdmin={user.is_admin}>
+    <AppShell tab={tab} userLabel={userLabel} isAdmin={user.is_admin}>
       <Slot />
     </AppShell>
   );

@@ -100,6 +100,49 @@ export type AdminUser = {
   is_admin: boolean;
 };
 
+export type MessagePeer = {
+  id: string;
+  unit_number: string;
+  name?: string | null;
+  profile_picture_url?: string | null;
+  directory_opt_in: boolean;
+};
+
+export type DirectMessage = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+};
+
+export type ConversationSummary = {
+  id: string;
+  peer: MessagePeer;
+  last_message?: DirectMessage | null;
+  updated_at: string;
+};
+
+export type ConversationDetail = {
+  id: string;
+  peer: MessagePeer;
+  messages: DirectMessage[];
+};
+
+export type MessageRecipient = {
+  kind: 'user' | 'unit';
+  id?: string | null;
+  name?: string | null;
+  unit_number: string;
+  profile_picture_url?: string | null;
+};
+
+export type SendMessageResult = {
+  conversation_id: string;
+  message: DirectMessage;
+  created: boolean;
+};
+
 export const reactionTypes = ['like', 'love', 'laugh', 'wow', 'sad', 'angry'] as const;
 export type ReactionType = (typeof reactionTypes)[number];
 
@@ -118,6 +161,14 @@ export function authorLabel(author: Author): string {
     return name;
   }
   return `Unit ${author.unit_number}`;
+}
+
+export function peerLabel(peer: Pick<MessagePeer, 'name' | 'unit_number'>): string {
+  const name = peer.name?.trim();
+  if (name) {
+    return name;
+  }
+  return `Unit ${peer.unit_number}`;
 }
 
 export function postBadge(post: { post_type: string; is_pinned: boolean }): 'bulletin' | 'pinned' | null {

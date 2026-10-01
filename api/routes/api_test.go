@@ -409,6 +409,137 @@ func TestRefreshLogoutAndPasswordRules(t *testing.T) {
 	}
 }
 
+func TestDirectMessages(t *testing.T) {
+	testutil.Setup(t)
+	r := NewRouter()
+	_, adminToken := seedAdmin(t)
+	maya := inviteAndComplete(t, r, adminToken, "maya@test.local", "201", "Maya Chen")
+	riley := inviteAndComplete(t, r, adminToken, "riley@test.local", "202", "Riley Hidden")
+
+	// Riley stays hidden; Maya opts in.
+	rec := doJSON(t, r, http.MethodPatch, "/api/profile/me", maya, map[string]any{"directory_opt_in": true})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("maya opt-in %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/recipients?q=May", maya, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("self search %d %s", rec.Code, rec.Body.String())
+	}
+	var selfHits []map[string]any
+	decode(t, rec, &selfHits)
+	if len(selfHits) != 0 {
+		t.Fatalf("should not return self: %+v", selfHits)
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/recipients?q=May", riley, nil)
+	decode(t, rec, &selfHits)
+	if len(selfHits) != 1 || selfHits[0]["kind"] != "user" {
+		t.Fatalf("expected visible Maya hit: %+v", selfHits)
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/recipients?q=202", maya, nil)
+	var unitHits []map[string]any
+	decode(t, rec, &unitHits)
+	if len(unitHits) != 1 || unitHits[0]["kind"] != "unit" || unitHits[0]["id"] != nil {
+		t.Fatalf("hidden unit hit should omit id: %+v", unitHits)
+	}
+
+	rec = doJSON(t, r, http.MethodPost, "/api/messages", maya, map[string]string{
+		"unit_number": "202", "content": "Hi neighbor",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("send by unit %d %s", rec.Code, rec.Body.String())
+	}
+	var sent struct {
+		ConversationID string `json:"conversation_id"`
+		Created        bool   `json:"created"`
+		Message        struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	}
+	decode(t, rec, &sent)
+	if !sent.Created || sent.ConversationID == "" || sent.Message.Content != "Hi neighbor" {
+		t.Fatalf("unexpected send: %+v", sent)
+	}
+
+	rec = doJSON(t, r, http.MethodPost, "/api/messages", maya, map[string]string{
+		"unit_number": "202", "content": "Second",
+	})
+	decode(t, rec, &sent)
+	if sent.Created {
+		t.Fatal("second message should reuse the thread")
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/conversations", riley, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("riley inbox %d %s", rec.Code, rec.Body.String())
+	}
+	var inbox []struct {
+		ID   string `json:"id"`
+		Peer struct {
+			Name           *string `json:"name"`
+			UnitNumber     string  `json:"unit_number"`
+			DirectoryOptIn bool    `json:"directory_opt_in"`
+		} `json:"peer"`
+		LastMessage *struct {
+			Content string `json:"content"`
+		} `json:"last_message"`
+	}
+	decode(t, rec, &inbox)
+	if len(inbox) != 1 || inbox[0].LastMessage == nil || inbox[0].LastMessage.Content != "Second" {
+		t.Fatalf("unexpected inbox: %+v", inbox)
+	}
+	if inbox[0].Peer.Name == nil || *inbox[0].Peer.Name != "Maya Chen" {
+		t.Fatalf("riley should see Maya's name: %+v", inbox[0].Peer)
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/conversations", maya, nil)
+	var mayaInbox []struct {
+		ID   string `json:"id"`
+		Peer struct {
+			Name           *string `json:"name"`
+			UnitNumber     string  `json:"unit_number"`
+			DirectoryOptIn bool    `json:"directory_opt_in"`
+		} `json:"peer"`
+	}
+	decode(t, rec, &mayaInbox)
+	if len(mayaInbox) != 1 || mayaInbox[0].Peer.Name != nil || mayaInbox[0].Peer.UnitNumber != "202" {
+		t.Fatalf("maya should see unit-only peer: %+v", mayaInbox[0].Peer)
+	}
+
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/conversations/"+sent.ConversationID, maya, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("thread %d %s", rec.Code, rec.Body.String())
+	}
+	var detail struct {
+		Messages []struct {
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
+	decode(t, rec, &detail)
+	if len(detail.Messages) != 2 {
+		t.Fatalf("expected 2 messages, got %+v", detail.Messages)
+	}
+
+	// Admin can message a resident by user id from search / roster.
+	rec = doJSON(t, r, http.MethodGet, "/api/messages/recipients?q=201", adminToken, nil)
+	var adminHits []struct {
+		Kind string  `json:"kind"`
+		ID   *string `json:"id"`
+	}
+	decode(t, rec, &adminHits)
+	if len(adminHits) != 1 || adminHits[0].ID == nil {
+		t.Fatalf("admin should see Maya user hit: %+v", adminHits)
+	}
+	rec = doJSON(t, r, http.MethodPost, "/api/messages", adminToken, map[string]string{
+		"user_id": *adminHits[0].ID, "content": "Welcome to the building",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("admin send %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestBoardGetAdminRosterMyReactionAndUrlGuard(t *testing.T) {
 	testutil.Setup(t)
 	r := NewRouter()

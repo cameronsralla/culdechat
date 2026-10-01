@@ -3,7 +3,11 @@
 Private, modern town square for apartments and small communities. Community-driven and non‑commercial; focused on helping neighbors connect.
 
 ### Vision
+**The modern digital town square for bringing local communities together.**
+
 Create a private, verified space for residents to discover boards by interest, post and comment openly, and strengthen local connection. Admins can publish official bulletins that stay pinned to the top of the feed.
+
+Authoritative vision/mission: [docs/vision.md](docs/vision.md). Operator docs (stub): [docs/admin-guide.md](docs/admin-guide.md). Feature wishlist: [docs/feature-backlog.md](docs/feature-backlog.md). Non-goals: [docs/non-goals.md](docs/non-goals.md). Competitors: [docs/competitive-landscape.md](docs/competitive-landscape.md). UI direction: [docs/design-direction.md](docs/design-direction.md).
 
 ### Core Tech
 - **Backend**: Go (Gin)

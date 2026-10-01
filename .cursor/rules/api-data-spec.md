@@ -1,5 +1,5 @@
 # Cul-de-Chat: API & Data Specifications
-Last Updated: September 9, 2026
+Last Updated: September 16, 2026
 
 Interactive, generated API docs live with the server at `/api/docs/index.html` when `CULDECHAT_DOCS=true`. They are produced from handler annotations via `make docs`. Treat Swagger as the request/response source of truth; this file is the schema and behavior summary.
 
@@ -81,6 +81,22 @@ Tracks user reactions to posts. One reaction per user per post.
 - `post_id` (uuid) - Foreign Key to `posts.id`
 - `type` (varchar) - One of `like`, `love`, `laugh`, `wow`, `sad`, `angry`.
 - Unique: (`post_id`, `user_id`)
+
+### conversations
+Unique 1:1 DM thread between two users. Pair is stored as ordered (`user_low_id`, `user_high_id`) so there is only one row per pair.
+
+- `id` (uuid) - Primary Key
+- `user_low_id` (uuid) - Foreign Key to `users.id` (lexicographically smaller id)
+- `user_high_id` (uuid) - Foreign Key to `users.id`
+- Unique: (`user_low_id`, `user_high_id`)
+
+### messages
+Text messages inside a conversation. Rows are created only when someone sends; the conversation is created with the first message.
+
+- `id` (uuid) - Primary Key
+- `conversation_id` (uuid) - Foreign Key to `conversations.id`
+- `sender_id` (uuid) - Foreign Key to `users.id`
+- `content` (text) - Plain text, max 2000 characters
 
 ---
 
@@ -273,6 +289,22 @@ Authenticated. Serves an uploaded profile photo.
 
 #### GET /api/directory
 Active users who opted in: `id`, `name`, `unit_number`, `profile_picture_url`.
+
+### Direct messages
+
+One conversation per pair of users. Created on the first sent message. Text only (≤2000). No edit/delete in this slice. Hidden (directory opt-out) peers expose unit only — name and photo are omitted. Messaging a unit number delivers to the active resident for that unit (today: the primary / only resident).
+
+#### GET /api/messages/conversations
+Inbox for the current user. Each row: `id`, `peer`, `last_message`, `updated_at`.
+
+#### GET /api/messages/conversations/{id}
+Conversation peer plus recent messages (default 50). Optional `before` message id loads older history.
+
+#### POST /api/messages
+Send. Body requires `content` and exactly one of `user_id` or `unit_number`. Returns `{ conversation_id, message, created }`.
+
+#### GET /api/messages/recipients?q=
+Search to start a chat. Visible users match name or unit (`kind: "user"` with id/name/photo). Hidden residents match unit only (`kind: "unit"`, no id/name/photo).
 
 ### Admin
 

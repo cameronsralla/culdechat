@@ -1,7 +1,9 @@
 # Cul-de-Chat: Backlog
-Last Updated: September 9, 2026
+Last Updated: September 30, 2026
 
-Living list of work after the current MVP slice. Behavior lives in `.cursor/rules/`; this file is priority and status only. When an item ships, mark it **done** here and update the matching spec.
+Living list of **engineering / near-term delivery** work. Behavior lives in `.cursor/rules/`. Product feature wishlist (calendar, templates, polls, …): [feature-backlog.md](./feature-backlog.md). Avoid list: [non-goals.md](./non-goals.md). Competitors: [competitive-landscape.md](./competitive-landscape.md).
+
+When an item ships, mark it **done** here and update the matching spec.
 
 Status: **next** (do now) · **planned** (scheduled) · **later** (only if people ask) · **skip** · **done**
 
@@ -21,10 +23,12 @@ API already exists for most of this. Missing UI or polish.
 ## v1.1 — Direct messages
 | Item | Status | Notes |
 |---|---|---|
-| One-to-one DMs | planned | Person-to-person threads |
-| Start a chat from a person | planned | Directory row, author on a post |
-| Message-by-unit | planned | Lands on the **primary** for that unit (see Households). Hidden members stay hidden |
-| Report via DM to an admin | planned | Formal report table can wait |
+| One-to-one DMs | done | Single thread per pair; create on first send |
+| Messages tab + inbox | done | Nav tab; FAB to compose |
+| Start a chat from a person | done | Directory row, author on a post |
+| Search visible people + hidden units | done | `/messages/recipients`; unit-only for opted-out |
+| Message-by-unit | done | Lands on the active resident for that unit (primary later) |
+| Report via DM to an admin | planned | Formal report table can wait; admins are regular DM peers |
 | Realtime for new DMs | planned | Socket.IO; polling is fine for the first slice |
 | In-app notification / badge | planned | Email-on-message can follow |
 
@@ -84,6 +88,10 @@ If the leaseholder leaves and someone else stays, admin offboards the household 
 
 ## Suggested order
 1. Now — done (photos, edit/delete/pin, invite copy, feed polish)
-2. v1.1 DMs (person + unit-to-primary, then realtime / badge)
-3. v1.2 Households
-4. Then (reset, search, post images, real admin, host + backups)
+2. **Vision & mission** — lock [vision.md](./vision.md) before deep UX (design pass paused in [design-direction.md](./design-direction.md))
+3. **Admin Guide** — living stub in [admin-guide.md](./admin-guide.md); lead with why, then admin + resident manuals as features land
+4. v1.1 DMs leftovers — unread badge, report-to-admin, Socket.IO
+5. UX deep-dive resume — per design-direction phases (Messages → feed → People/You…)
+6. Capability-tier / system-check design (core vs media-heavy hosts)
+7. v1.2 Households
+8. Then (reset, search, post images, real admin, host + backups, mothership provisioning tools)

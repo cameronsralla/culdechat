@@ -2,11 +2,15 @@ import { request } from './client';
 import type {
   AdminUser,
   Board,
+  ConversationDetail,
+  ConversationSummary,
   CreatedPost,
   DirectoryUser,
   FeedPage,
+  MessageRecipient,
   PostDetail,
   Profile,
+  SendMessageResult,
 } from './types';
 
 export async function listBoards(): Promise<Board[]> {
@@ -136,3 +140,39 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
 export function offboardUser(userId: string): Promise<void> {
   return request(`/admin/users/${userId}/offboard`, { method: 'POST' });
 }
+
+export async function listConversations(): Promise<ConversationSummary[]> {
+  return (await request<ConversationSummary[] | null>('/messages/conversations', { method: 'GET' })) ?? [];
+}
+
+export function getConversation(
+  conversationId: string,
+  opts?: { limit?: number; before?: string },
+): Promise<ConversationDetail> {
+  const q = new URLSearchParams();
+  if (opts?.limit) {
+    q.set('limit', String(opts.limit));
+  }
+  if (opts?.before) {
+    q.set('before', opts.before);
+  }
+  const qs = q.toString();
+  return request<ConversationDetail>(
+    qs ? `/messages/conversations/${conversationId}?${qs}` : `/messages/conversations/${conversationId}`,
+    { method: 'GET' },
+  );
+}
+
+export function sendDirectMessage(input: {
+  content: string;
+  user_id?: string;
+  unit_number?: string;
+}): Promise<SendMessageResult> {
+  return request<SendMessageResult>('/messages', { method: 'POST', body: input });
+}
+
+export async function searchRecipients(q: string): Promise<MessageRecipient[]> {
+  const qs = new URLSearchParams({ q });
+  return (await request<MessageRecipient[] | null>(`/messages/recipients?${qs}`, { method: 'GET' })) ?? [];
+}
+

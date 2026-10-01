@@ -5,6 +5,7 @@ type Props = ViewProps & {
   onPress?: () => void;
   padded?: boolean;
   accent?: 'none' | 'pin' | 'brand';
+  elevated?: boolean;
 };
 
 const stylesFor = (t: Theme) => ({
@@ -12,20 +13,39 @@ const stylesFor = (t: Theme) => ({
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.md,
     borderWidth: t.layout.border,
-    borderColor: t.colors.line,
+    borderColor: t.colors.lineSoft,
+    ...t.shadow.card,
   },
-  padded: { padding: t.space.lg },
-  pin: { backgroundColor: t.colors.pin, borderColor: t.colors.pinLine },
-  brand: { backgroundColor: t.colors.brandSoft, borderColor: t.colors.brandLine },
-  pressed: { opacity: 0.92 },
+  flat: {
+    ...t.shadow.soft,
+  },
+  padded: { padding: t.space.xl },
+  pin: {
+    backgroundColor: t.colors.pin,
+    borderColor: t.colors.pinLine,
+  },
+  brand: {
+    backgroundColor: t.colors.brandWash,
+    borderColor: t.colors.brandLine,
+  },
+  pressed: { opacity: 0.94, transform: [{ scale: 0.995 }] },
 });
 
-export function Card({ onPress, padded = true, accent = 'none', style, children, ...rest }: Props) {
+export function Card({
+  onPress,
+  padded = true,
+  accent = 'none',
+  elevated = true,
+  style,
+  children,
+  ...rest
+}: Props) {
   const styles = useStyles(stylesFor);
   const body = (
     <View
       style={[
         styles.card,
+        !elevated ? styles.flat : null,
         padded ? styles.padded : null,
         accent === 'pin' ? styles.pin : null,
         accent === 'brand' ? styles.brand : null,

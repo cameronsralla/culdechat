@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { useStyles, type Theme } from '../../theme';
 import { AppText } from './AppText';
+import { AppIcon } from './Icon';
 import { Card } from './Card';
 
 export type PostCardProps = {
@@ -16,9 +17,33 @@ export type PostCardProps = {
 };
 
 const stylesFor = (t: Theme) => ({
-  meta: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginBottom: t.space.xs },
+  top: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: t.space.sm,
+    marginBottom: t.space.md,
+  },
+  meta: { flex: 1, minWidth: 0 },
+  badge: {
+    backgroundColor: t.colors.white,
+    borderRadius: t.radius.pill,
+    paddingHorizontal: t.space.sm,
+    paddingVertical: t.space.xxs,
+    borderWidth: t.layout.border,
+    borderColor: t.colors.pinLine,
+  },
   title: { marginBottom: t.space.xs },
-  counts: { marginTop: t.space.sm },
+  counts: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: t.space.lg,
+    marginTop: t.space.md,
+    paddingTop: t.space.md,
+    borderTopWidth: t.layout.border,
+    borderTopColor: t.colors.lineSoft,
+  },
+  count: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: t.space.xs },
 });
 
 export function PostCard({
@@ -36,27 +61,40 @@ export function PostCard({
   const badgeLabel = badge === 'bulletin' ? 'Bulletin' : badge === 'pinned' ? 'Pinned' : null;
   return (
     <Card onPress={onPress} accent={badge ? 'pin' : 'none'}>
-      <View style={styles.meta}>
-        <AppText variant="caption" tone="muted">
+      <View style={styles.top}>
+        <AppText variant="caption" tone="muted" style={styles.meta} numberOfLines={1}>
           {author}
-          {board ? ` · in ${board}` : ''}
+          {board ? ` · ${board}` : ''}
           {when ? ` · ${when}` : ''}
         </AppText>
         {badgeLabel ? (
-          <AppText variant="caption" tone="brand">
-            {badgeLabel}
-          </AppText>
+          <View style={styles.badge}>
+            <AppText variant="label" tone="brand">
+              {badgeLabel}
+            </AppText>
+          </View>
         ) : null}
       </View>
       <AppText variant="subtitle" style={styles.title}>
         {title}
       </AppText>
-      <AppText variant="body" tone="muted" numberOfLines={2}>
+      <AppText variant="body" tone="muted" numberOfLines={3}>
         {snippet}
       </AppText>
-      <AppText variant="caption" tone="muted" style={styles.counts}>
-        {comments} comments · {reactions} reactions
-      </AppText>
+      <View style={styles.counts}>
+        <View style={styles.count}>
+          <AppIcon name="chatbubble-outline" size={15} />
+          <AppText variant="caption" tone="muted">
+            {comments}
+          </AppText>
+        </View>
+        <View style={styles.count}>
+          <AppIcon name="heart-outline" size={15} />
+          <AppText variant="caption" tone="muted">
+            {reactions}
+          </AppText>
+        </View>
+      </View>
     </Card>
   );
 }

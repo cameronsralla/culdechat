@@ -1,18 +1,24 @@
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { listDirectory } from '../api/community';
 import type { DirectoryUser } from '../api/types';
-import { AppText, Avatar, Card, EmptyState, ErrorBanner, Stack } from '../components/ui';
+import {
+  AppText,
+  Avatar,
+  Button,
+  EmptyState,
+  ErrorBanner,
+  ListGroup,
+  ListRow,
+  PageHeader,
+  Stack,
+} from '../components/ui';
 import { Screen } from '../components/layout/Screen';
-import { useStyles, type Theme } from '../theme';
-
-const stylesFor = (t: Theme) => ({
-  row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: t.space.md },
-});
+import { useCompactLayout } from '../components/layout/useCompactLayout';
 
 export function DirectoryScreen() {
-  const styles = useStyles(stylesFor);
+  const router = useRouter();
+  const compact = useCompactLayout();
   const [people, setPeople] = useState<DirectoryUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,29 +52,54 @@ export function DirectoryScreen() {
       }}
     >
       <Stack gap="lg">
-        <AppText variant="title">Neighbors</AppText>
-        <AppText tone="muted">Residents who opted into the directory.</AppText>
+        <PageHeader
+          title="People"
+          subtitle="Neighbors who chose to be listed. Say hello — or message by unit if someone stays private."
+          eyebrow="Your community"
+          hideTitleOnCompact
+          compact={compact}
+        />
         <ErrorBanner message={error} />
         {loaded && people.length === 0 ? (
           <EmptyState
-            title={error ? 'Could not load the directory.' : 'Nobody has opted in yet.'}
+            title={error ? 'Could not load the directory.' : 'Directory is empty for now.'}
+            subtitle={
+              error ? undefined : 'When neighbors opt in, you’ll find them here. Quiet is fine until then.'
+            }
             actionLabel={error ? 'Try again' : undefined}
             onAction={error ? () => void load() : undefined}
+            icon="people-outline"
           />
         ) : null}
-        {people.map((person) => (
-          <Card key={person.id}>
-            <View style={styles.row}>
-              <Avatar path={person.profile_picture_url} label={person.name} />
-              <Stack gap="xs">
+        {people.length > 0 ? (
+          <ListGroup>
+            {people.map((person, index) => (
+              <ListRow
+                key={person.id}
+                last={index === people.length - 1}
+                leading={<Avatar path={person.profile_picture_url} label={person.name} />}
+                trailing={
+                  <Button
+                    label="Message"
+                    variant="soft"
+                    size="sm"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/messages/new',
+                        params: { userId: person.id, unit: person.unit_number, name: person.name },
+                      })
+                    }
+                  />
+                }
+              >
                 <AppText variant="subtitle">{person.name}</AppText>
                 <AppText variant="caption" tone="muted">
                   Unit {person.unit_number}
                 </AppText>
-              </Stack>
-            </View>
-          </Card>
-        ))}
+              </ListRow>
+            ))}
+          </ListGroup>
+        ) : null}
       </Stack>
     </Screen>
   );

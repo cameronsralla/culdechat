@@ -1,17 +1,17 @@
 # Cul-de-Chat: UI Screens Specification
-Last Updated: September 9, 2026
+Last Updated: September 30, 2026
 
-The Expo app lives in `mobile/`. One codebase: Expo web is the desktop experience; the same screens ship to iOS/Android. `AppShell` uses a left sidebar when the window is ≥800px and bottom tabs when it is narrower. Visual language lives in `src/theme/theme.ts`. Screens are wired to the live API: login, complete registration (`/register?token=` pre-fills), feed, boards, board detail, create board/post, post detail (comments, reactions, edit/delete, admin pin), directory with photos, You (profile), and Admin (`/admin`, nav item and page only for `is_admin`).
+The Expo app lives in `mobile/`. One codebase: Expo web is the desktop experience; the same screens ship to iOS/Android. `AppShell` uses a left sidebar when the window is ≥800px (no duplicate top header on desktop) and bottom tabs when it is narrower. Visual language lives in `src/theme/theme.ts` — warm stone paper, lagoon teal, soft branded wash, Ionicons; exclusivity shown lightly (“Neighbors only” chips). Nav tabs: Square, Boards, People, Messages, You (Admin if admin). Screens are wired to the live API: login, complete registration (`/register?token=` pre-fills), feed, boards, board detail, create board/post, post detail (comments, reactions, edit/delete, admin pin, message author), directory with photos + Message, Messages inbox / new / thread, You (profile), and Admin (`/admin`, nav item and page only for `is_admin`). Feel assumptions: [docs/design-direction.md](../../docs/design-direction.md).
 
 ## 1. Login Screen
 Path: `/login`
 
 ### Purpose & Layout
-Entry point for existing users. Simple and clean, featuring:
-- The "Cul-de-Chat" logo at the top.
-- An input field for Email.
-- An input field for Password.
-- A prominent "Login" button.
+Entry point for existing users. Brand-forward auth panel:
+- Logo + “Cul-de-Chat” display title.
+- Tagline: private town square for people who share your place.
+- Soft “Invite-only · Neighbors only” chip.
+- Email, Password, Log in, and Have an invite?
 
 ### User Interactions
 - Users enter their credentials and tap "Login."
@@ -30,14 +30,13 @@ First-time residents finishing an admin invite.
 - On success, they are logged in and redirected to the General Feed (`/`).
 - On failure, show invalid/expired invite errors.
 
-## 2. General Feed (Home Screen)
+## 2. General Feed (Home / Square Screen)
 Path: `/`
 
 ### Purpose & Layout
-Main "town square" and the first screen after login.
-- Header: A simple header with the app name.
-- Pinned Posts: Admin "Bulletin Posts" displayed at the top in a highlighted section.
-- Main Content: Vertically scrolling list of posts from all boards, sorted by most recent. Each item is a "Post Card" showing:
+Main town square and the first screen after login. Tab label: **Square**.
+- Hero band: title “The square”, exclusivity chip, short purpose line.
+- Main Content: vertically scrolling list of posts from all boards, sorted by most recent. Each item is a "Post Card" showing:
   - Author's unit number (or name if opted-in).
   - The board it was posted on (e.g., "in Dog Lovers").
   - Post title.
@@ -84,7 +83,22 @@ Name and optional description. Creator is subscribed. Redirects to the new board
 ## 3d. Directory
 Path: `/directory`
 
-Opted-in neighbors: photo, name, and unit. Pull to refresh.
+Opted-in neighbors: photo, name, and unit. Message opens compose with that person. Pull to refresh.
+
+## 3e. Messages
+Path: `/messages`
+
+Inbox of 1:1 conversations (peer label, last message preview, relative time). FAB (+) → New message. Pull to refresh.
+
+### New message
+Path: `/messages/new`
+
+Search visible people by name/unit; hidden residents appear as unit-only hits. Optional deep link params `userId` / `unit` / `name` from Directory or post author. First send creates the thread and navigates to it.
+
+### Conversation
+Path: `/messages/{conversationId}`
+
+Simple text stream (no media, edit, or delete). Composer at the bottom. Polls while focused.
 
 ## 4. Post Detail Screen
 Path: `/posts/{postId}`
@@ -100,6 +114,7 @@ Displays a single post and its entire comment thread.
 - Tap an emoji to add/remove reaction to the main post.
 - Type in the comment input and hit "Send" to add a comment.
 - Scroll through all existing comments.
+- **Message author** opens New message with that person (or their unit when they are hidden).
 - Author (or admin) can edit or delete the post. Admins can pin/unpin a standard post. Bulletins stay pinned and comments stay off.
 - Comment author can edit; author or admin can delete.
 
@@ -121,7 +136,7 @@ Form for creating a new post.
 ## 6. You
 Path: `/you`
 
-Profile photo (web upload), name, directory opt-in, password change, logout.
+Profile photo (web upload), name, directory opt-in (listed vs hidden — hidden still reachable by unit), password change, logout.
 
 ## 7. Admin
 Path: `/admin`

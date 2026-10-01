@@ -105,6 +105,28 @@ definitions:
         example: invite-token
         type: string
     type: object
+  services.ConversationDTO:
+    properties:
+      id:
+        type: string
+      last_message:
+        $ref: '#/definitions/services.MessageDTO'
+      peer:
+        $ref: '#/definitions/services.PeerDTO'
+      updated_at:
+        type: string
+    type: object
+  services.ConversationDetailDTO:
+    properties:
+      id:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/services.MessageDTO'
+        type: array
+      peer:
+        $ref: '#/definitions/services.PeerDTO'
+    type: object
   services.CreateBoardInput:
     properties:
       description:
@@ -234,6 +256,32 @@ definitions:
       unit_number:
         type: string
     type: object
+  services.MessageDTO:
+    properties:
+      content:
+        type: string
+      conversation_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      sender_id:
+        type: string
+    type: object
+  services.PeerDTO:
+    properties:
+      directory_opt_in:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      profile_picture_url:
+        type: string
+      unit_number:
+        type: string
+    type: object
   services.PostDetailDTO:
     properties:
       author:
@@ -297,6 +345,20 @@ definitions:
         example: like
         type: string
     type: object
+  services.RecipientDTO:
+    properties:
+      id:
+        type: string
+      kind:
+        description: '"user" or "unit"'
+        type: string
+      name:
+        type: string
+      profile_picture_url:
+        type: string
+      unit_number:
+        type: string
+    type: object
   services.RefreshInput:
     properties:
       refresh_token:
@@ -327,6 +389,24 @@ definitions:
         type: string
       registration_token:
         type: string
+    type: object
+  services.SendMessageInput:
+    properties:
+      content:
+        type: string
+      unit_number:
+        type: string
+      user_id:
+        type: string
+    type: object
+  services.SendMessageResult:
+    properties:
+      conversation_id:
+        type: string
+      created:
+        type: boolean
+      message:
+        $ref: '#/definitions/services.MessageDTO'
     type: object
   services.SubscribeResponse:
     properties:
@@ -754,6 +834,127 @@ paths:
       summary: Fetch an uploaded profile photo
       tags:
       - profile
+  /messages:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: content plus user_id or unit_number
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/services.SendMessageInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.SendMessageResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Send a direct message (creates the thread on first send)
+      tags:
+      - messages
+  /messages/conversations:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.ConversationDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List DM conversations
+      tags:
+      - messages
+  /messages/conversations/{id}:
+    get:
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Max messages (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Message ID — return older messages
+        in: query
+        name: before
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ConversationDetailDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a DM conversation and recent messages
+      tags:
+      - messages
+  /messages/recipients:
+    get:
+      parameters:
+      - description: Name or unit search
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/services.RecipientDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/routes.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search people and units to start a DM
+      tags:
+      - messages
   /posts:
     get:
       description: Paginated posts from all boards. Pinned bulletin posts appear first.

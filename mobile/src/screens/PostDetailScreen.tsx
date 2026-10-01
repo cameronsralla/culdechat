@@ -186,46 +186,67 @@ export function PostDetailScreen() {
               {authorLabel(post.author)} · in {post.board.name} · {relativeTime(post.created_at)}
               {badgeLabel ? ` · ${badgeLabel}` : ''}
             </AppText>
-            {editing ? (
+            {user && post.author.id !== user.id ? (
+              <Button
+                label="Message author"
+                variant="soft"
+                size="sm"
+                onPress={() =>
+                  router.push({
+                    pathname: '/messages/new',
+                    params: {
+                      userId: post.author.id,
+                      unit: post.author.unit_number,
+                      name: post.author.name ?? '',
+                    },
+                  })
+                }
+              />
+            ) : null}
+            <Card accent={badge ? 'pin' : 'none'}>
               <Stack gap="md">
-                <TextField label="Title" value={editTitle} onChangeText={setEditTitle} />
-                <TextField label="Post" value={editBody} onChangeText={setEditBody} multiline />
-                <View style={styles.actions}>
-                  <Button label="Save" onPress={() => void onSavePost()} loading={sending} disabled={!editTitle.trim() || !editBody.trim()} />
-                  <Button label="Cancel" variant="ghost" onPress={() => setEditing(false)} />
+                {editing ? (
+                  <Stack gap="md">
+                    <TextField label="Title" value={editTitle} onChangeText={setEditTitle} />
+                    <TextField label="Post" value={editBody} onChangeText={setEditBody} multiline />
+                    <View style={styles.actions}>
+                      <Button label="Save" onPress={() => void onSavePost()} loading={sending} disabled={!editTitle.trim() || !editBody.trim()} />
+                      <Button label="Cancel" variant="ghost" onPress={() => setEditing(false)} />
+                    </View>
+                  </Stack>
+                ) : (
+                  <>
+                    <AppText variant="title">{post.title}</AppText>
+                    <AppText>{post.content}</AppText>
+                  </>
+                )}
+                {canManagePost && !editing ? (
+                  <View style={styles.actions}>
+                    <Button label="Edit" variant="ghost" onPress={() => setEditing(true)} />
+                    {user?.is_admin && post.post_type !== 'bulletin' ? (
+                      <Button label={post.is_pinned ? 'Unpin' : 'Pin'} variant="ghost" onPress={() => void onTogglePin()} />
+                    ) : null}
+                    <Button label="Delete" variant="danger" onPress={onDeletePost} />
+                  </View>
+                ) : null}
+                <View style={styles.reactions}>
+                  {reactionTypes.map((type) => {
+                    const on = post.my_reaction === type;
+                    return (
+                      <Pressable
+                        key={type}
+                        onPress={() => void onReact(type)}
+                        style={[styles.chip, on ? styles.chipOn : null]}
+                      >
+                        <AppText variant="label">
+                          {reactionEmoji[type]} {counts.get(type) ?? 0}
+                        </AppText>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </Stack>
-            ) : (
-              <>
-                <AppText variant="title">{post.title}</AppText>
-                <AppText>{post.content}</AppText>
-              </>
-            )}
-            {canManagePost && !editing ? (
-              <View style={styles.actions}>
-                <Button label="Edit" variant="ghost" onPress={() => setEditing(true)} />
-                {user?.is_admin && post.post_type !== 'bulletin' ? (
-                  <Button label={post.is_pinned ? 'Unpin' : 'Pin'} variant="ghost" onPress={() => void onTogglePin()} />
-                ) : null}
-                <Button label="Delete" variant="danger" onPress={onDeletePost} />
-              </View>
-            ) : null}
-            <View style={styles.reactions}>
-              {reactionTypes.map((type) => {
-                const on = post.my_reaction === type;
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => void onReact(type)}
-                    style={[styles.chip, on ? styles.chipOn : null]}
-                  >
-                    <AppText variant="label">
-                      {reactionEmoji[type]} {counts.get(type) ?? 0}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
+            </Card>
             {post.comments_disabled ? (
               <AppText tone="muted">Comments are off for this bulletin.</AppText>
             ) : (

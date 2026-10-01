@@ -34,9 +34,9 @@ export function Screen({
   const styles = useStyles(stylesFor);
   const locked = useRef(false);
   const pad = {
-    paddingBottom: theme.space.lg,
-    paddingHorizontal: padded ? (compact ? theme.space.xl : theme.space.xxxl) : 0,
-    paddingTop: inShell ? theme.space.lg : Math.max(insets.top, theme.space.lg),
+    paddingBottom: theme.space.xxl,
+    paddingHorizontal: padded ? (compact ? theme.space.lg : theme.space.xxl) : 0,
+    paddingTop: inShell ? (compact ? theme.space.lg : theme.space.xl) : Math.max(insets.top, theme.space.lg),
     maxWidth: inShell && !compact ? theme.layout.contentMax : undefined,
     width: '100%' as const,
     alignSelf: 'center' as const,

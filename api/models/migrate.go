@@ -33,6 +33,12 @@ func Migrate(ctx context.Context) error {
 	if err := EnsureRefreshTokensTable(ctx); err != nil {
 		return err
 	}
+	if err := EnsureConversationsTable(ctx); err != nil {
+		return err
+	}
+	if err := EnsureMessagesTable(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 

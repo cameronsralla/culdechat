@@ -4,13 +4,31 @@ import { useFocusEffect } from 'expo-router';
 import { changePassword, getProfile, updateProfile, uploadProfilePhoto } from '../api/community';
 import type { Profile } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { AppText, Avatar, Button, Card, ErrorBanner, Stack, TextField } from '../components/ui';
+import {
+  AppText,
+  Avatar,
+  Button,
+  Card,
+  ErrorBanner,
+  PageHeader,
+  Stack,
+  TextField,
+} from '../components/ui';
 import { Screen } from '../components/layout/Screen';
+import { useCompactLayout } from '../components/layout/useCompactLayout';
 import { useStyles, type Theme } from '../theme';
 
 const stylesFor = (t: Theme) => ({
   identity: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: t.space.lg },
   grow: { flex: 1 },
+  aboutHint: {
+    backgroundColor: t.colors.brandWash,
+    borderRadius: t.radius.md,
+    padding: t.space.lg,
+    borderWidth: t.layout.border,
+    borderColor: t.colors.brandLine,
+    gap: t.space.xs,
+  },
 });
 
 function PhotoPicker({ onFile }: { onFile: (file: Blob) => void }) {
@@ -32,6 +50,7 @@ function PhotoPicker({ onFile }: { onFile: (file: Blob) => void }) {
 
 export function YouScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const compact = useCompactLayout();
   const styles = useStyles(stylesFor);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState('');
@@ -121,6 +140,13 @@ export function YouScreen() {
       }}
     >
       <Stack gap="xl">
+        <PageHeader
+          title="You"
+          subtitle="How neighbors find you — and a little about who you are."
+          eyebrow="Your profile"
+          hideTitleOnCompact
+          compact={compact}
+        />
         <ErrorBanner message={error} />
         {notice ? <AppText tone="brand">{notice}</AppText> : null}
 
@@ -145,9 +171,23 @@ export function YouScreen() {
               variant="ghost"
               onPress={() => void onOptIn()}
             />
-            <Button label="Log out" variant="ghost" onPress={() => void logout()} />
+            <AppText variant="caption" tone="muted">
+              {profile?.directory_opt_in
+                ? 'Neighbors can see your name and photo, and message you directly.'
+                : 'Your name stays private. Neighbors can still message Unit ' +
+                  (profile?.unit_number || user?.unit_number || '') +
+                  '.'}
+            </AppText>
           </Stack>
         </Card>
+
+        <View style={styles.aboutHint}>
+          <AppText variant="subtitle">About you</AppText>
+          <AppText tone="muted">
+            Interests and a short “ask me about…” are coming soon — so neighbors can find common ground
+            beyond a name and unit.
+          </AppText>
+        </View>
 
         <Card>
           <Stack gap="md">
@@ -162,6 +202,8 @@ export function YouScreen() {
             />
           </Stack>
         </Card>
+
+        <Button label="Log out" variant="ghost" onPress={() => void logout()} />
       </Stack>
     </Screen>
   );

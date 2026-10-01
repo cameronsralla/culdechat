@@ -109,6 +109,7 @@ func NewRouter() *gin.Engine {
 	RegisterPostRoutes(api)
 	RegisterProfileRoutes(api)
 	RegisterAdminRoutes(api)
+	RegisterMessageRoutes(api)
 
 	return router
 }

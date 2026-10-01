@@ -48,7 +48,7 @@ func Reset(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := postgres.Pool().Exec(ctx, `
-TRUNCATE TABLE refresh_tokens, post_reactions, comments, posts, board_subscriptions, boards, users CASCADE;
+TRUNCATE TABLE messages, conversations, refresh_tokens, post_reactions, comments, posts, board_subscriptions, boards, users CASCADE;
 `)
 	if err != nil {
 		t.Fatalf("truncate: %v", err)

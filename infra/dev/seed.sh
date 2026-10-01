@@ -149,6 +149,77 @@ curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $
   "$BASE/boards/$gen_id/posts" \
   -d '{"title":"Lost a blue water bottle","content":"Left it by the mailboxes last night. Unit 410 if you find it."}' >/dev/null || true
 
+# Grab the newest posts so we can attach comments / reactions.
+posts_json=$(curl -sS -H "Authorization: Bearer $maya_token" "$BASE/posts?limit=20")
+post_id() {
+  printf '%s' "$posts_json" | python3 -c '
+import sys, json
+title = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+    posts = data.get("posts") or data or []
+    print(next((p.get("id", "") for p in posts if p.get("title") == title), ""))
+except Exception:
+    print("")
+' "$1"
+}
+
+walk_id=$(post_id "Anyone want a walking group?")
+table_id=$(post_id "Spare folding table")
+book_id=$(post_id "Book club restart")
+bottle_id=$(post_id "Lost a blue water bottle")
+
+echo "Seeding comments and reactions..."
+if [ -n "$walk_id" ]; then
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $jordan_token" \
+    "$BASE/posts/$walk_id/comments" -d '{"content":"I am in for Saturdays. 8am work?"}' >/dev/null || true
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $priya_token" \
+    "$BASE/posts/$walk_id/comments" -d '{"content":"Yes! I can do every other week."}' >/dev/null || true
+  curl -sS -X PUT -H 'Content-Type: application/json' -H "Authorization: Bearer $sam_token" \
+    "$BASE/posts/$walk_id/reactions" -d '{"type":"like"}' >/dev/null || true
+fi
+if [ -n "$table_id" ]; then
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+    "$BASE/posts/$table_id/comments" -d '{"content":"Still available? I can grab it Sunday."}' >/dev/null || true
+  curl -sS -X PUT -H 'Content-Type: application/json' -H "Authorization: Bearer $priya_token" \
+    "$BASE/posts/$table_id/reactions" -d '{"type":"love"}' >/dev/null || true
+fi
+if [ -n "$book_id" ]; then
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+    "$BASE/posts/$book_id/comments" -d '{"content":"Count me in — what is the first book?"}' >/dev/null || true
+  curl -sS -X PUT -H 'Content-Type: application/json' -H "Authorization: Bearer $jordan_token" \
+    "$BASE/posts/$book_id/reactions" -d '{"type":"like"}' >/dev/null || true
+fi
+if [ -n "$bottle_id" ]; then
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $priya_token" \
+    "$BASE/posts/$bottle_id/comments" -d '{"content":"I think I saw a blue one near the recycling bins."}' >/dev/null || true
+fi
+
+echo "Seeding direct messages..."
+riley_token=$(login "riley@culdechat.local" "$SEED_PASS")
+
+# Maya <-> Jordan (visible neighbors)
+curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+  "$BASE/messages" -d '{"unit_number":"203","content":"Hey Jordan — still have that folding table?"}' >/dev/null || true
+curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $jordan_token" \
+  "$BASE/messages" -d '{"unit_number":"102","content":"Yep! Free all weekend. Want me to leave it by the lobby?"}' >/dev/null || true
+curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+  "$BASE/messages" -d '{"unit_number":"203","content":"Lobby works — I will grab it Sunday afternoon. Thanks!"}' >/dev/null || true
+
+# Maya <-> Priya
+curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $priya_token" \
+  "$BASE/messages" -d '{"unit_number":"102","content":"Maya, want to walk together before book club Tuesday?"}' >/dev/null || true
+curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+  "$BASE/messages" -d '{"unit_number":"305","content":"Absolutely. Meet by the courtyard gate at 6:30?"}' >/dev/null || true
+
+# Maya <-> Riley (hidden: unit-only)
+if [ -n "$riley_token" ]; then
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $maya_token" \
+    "$BASE/messages" -d '{"unit_number":"512","content":"Hey — package for 512 was sitting by the mailboxes. I brought it inside the vestibule."}' >/dev/null || true
+  curl -sS -X POST -H 'Content-Type: application/json' -H "Authorization: Bearer $riley_token" \
+    "$BASE/messages" -d '{"unit_number":"102","content":"Thank you!! Just grabbed it. Really appreciate it."}' >/dev/null || true
+fi
+
 echo
 echo "Seed accounts (password: $SEED_PASS)"
 printf '%-22s %-18s %-8s %s\n' "EMAIL" "NAME" "UNIT" "DIRECTORY"
@@ -159,5 +230,11 @@ printf '%-22s %-18s %-8s %s\n' "priya@culdechat.local" "Priya Shah" "305" "liste
 printf '%-22s %-18s %-8s %s\n' "sam@culdechat.local" "Sam Ortiz" "410" "listed"
 printf '%-22s %-18s %-8s %s\n' "riley@culdechat.local" "Riley Nguyen" "512" "hidden (unit-only DMs)"
 printf '%-22s %-18s %-8s %s\n' "seeduser@example.com" "Seed User" "101" "listed"
+echo
+echo "Suggested test pairs (same password):"
+echo "  Maya  <-> Jordan  (visible directory chat about the table)"
+echo "  Maya  <-> Priya   (book club / walk)"
+echo "  Maya  <-> Riley   (unit 512 — Riley is hidden from People)"
+echo "  Open two browsers / profiles: log in as Maya in one, Jordan in the other."
 echo
 echo "Seeding complete."

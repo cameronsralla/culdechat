@@ -4,8 +4,9 @@ import { Redirect, useFocusEffect } from 'expo-router';
 import { inviteResident, listAdminUsers, offboardUser } from '../api/community';
 import type { AdminUser } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { AppText, Button, Card, EmptyState, ErrorBanner, Stack, TextField } from '../components/ui';
+import { AppText, Button, Card, EmptyState, ErrorBanner, PageHeader, Stack, TextField } from '../components/ui';
 import { Screen } from '../components/layout/Screen';
+import { useCompactLayout } from '../components/layout/useCompactLayout';
 import { copyText } from '../lib/clipboard';
 import { confirm } from '../lib/confirm';
 import { useStyles, type Theme } from '../theme';
@@ -31,6 +32,7 @@ function inviteLink(token: string): string {
 
 export function AdminScreen() {
   const { user } = useAuth();
+  const compact = useCompactLayout();
   const styles = useStyles(stylesFor);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteUnit, setInviteUnit] = useState('');
@@ -107,8 +109,13 @@ export function AdminScreen() {
       }}
     >
       <Stack gap="xl">
-        <AppText variant="title">Admin</AppText>
-        <AppText tone="muted">Invite residents and manage the roster.</AppText>
+        <PageHeader
+          title="Admin"
+          subtitle="Invite neighbors and keep the membership list tidy. Stewardship, not surveillance."
+          eyebrow="Stewards"
+          hideTitleOnCompact
+          compact={compact}
+        />
         <ErrorBanner message={error} />
         {copied ? <AppText tone="brand">{copied}</AppText> : null}
 

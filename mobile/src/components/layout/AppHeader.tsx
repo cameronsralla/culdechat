@@ -12,25 +12,36 @@ const stylesFor = (t: Theme) => ({
     paddingHorizontal: t.space.xl,
     paddingVertical: t.space.md,
     borderBottomWidth: t.layout.border,
-    borderBottomColor: t.colors.line,
+    borderBottomColor: t.colors.lineSoft,
     backgroundColor: t.colors.surface,
   },
+  logoWrap: {
+    width: t.layout.headerLogo + 8,
+    height: t.layout.headerLogo + 8,
+    borderRadius: t.radius.sm,
+    backgroundColor: t.colors.brandWash,
+    borderWidth: t.layout.border,
+    borderColor: t.colors.brandLine,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+  },
   logo: { width: t.layout.headerLogo, height: t.layout.headerLogo },
-  titles: { flex: 1 },
+  titles: { flex: 1, gap: 1 },
 });
 
-export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export function AppHeader({ title }: { title: string }) {
   const styles = useStyles(stylesFor);
   return (
     <View style={styles.bar}>
-      <Image source={logo} style={styles.logo} resizeMode="contain" />
+      <View style={styles.logoWrap}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </View>
       <View style={styles.titles}>
-        <AppText variant="title">{title}</AppText>
-        {subtitle ? (
-          <AppText variant="caption" tone="muted">
-            {subtitle}
-          </AppText>
-        ) : null}
+        <AppText variant="subtitle">{title}</AppText>
+        <AppText variant="caption" tone="muted">
+          Neighbors only
+        </AppText>
       </View>
     </View>
   );

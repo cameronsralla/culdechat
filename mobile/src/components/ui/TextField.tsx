@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { TextInput, View, type TextInputProps } from 'react-native';
+import {
+  TextInput,
+  View,
+  type NativeSyntheticEvent,
+  type TextInputChangeEventData,
+  type TextInputProps,
+} from 'react-native';
 import { useStyles, useTheme, type Theme } from '../../theme';
 import { AppText } from './AppText';
 
@@ -14,7 +20,7 @@ const stylesFor = (t: Theme) => ({
     ...t.type.body,
     color: t.colors.ink,
     backgroundColor: t.colors.white,
-    borderWidth: t.layout.borderStrong,
+    borderWidth: t.layout.border,
     borderColor: t.colors.line,
     borderRadius: t.radius.md,
     paddingHorizontal: t.space.lg,
@@ -22,6 +28,8 @@ const stylesFor = (t: Theme) => ({
   },
   inputFocused: {
     borderColor: t.colors.brand,
+    backgroundColor: t.colors.surface,
+    ...t.shadow.soft,
   },
   multiline: {
     minHeight: 120,
@@ -29,10 +37,22 @@ const stylesFor = (t: Theme) => ({
   },
 });
 
-export function TextField({ label, style, ...rest }: Props) {
+export function TextField({ label, style, onChangeText, onChange, ...rest }: Props) {
   const theme = useTheme();
   const styles = useStyles(stylesFor);
   const [focused, setFocused] = useState(false);
+
+  function handleChange(e: NativeSyntheticEvent<TextInputChangeEventData>) {
+    onChange?.(e);
+    // Bridge for RN Web when onChangeText is flaky.
+    if (onChangeText) {
+      const text = e.nativeEvent?.text;
+      if (typeof text === 'string') {
+        onChangeText(text);
+      }
+    }
+  }
+
   return (
     <View style={styles.wrap}>
       <AppText variant="label" tone="muted" style={styles.label}>
@@ -40,6 +60,8 @@ export function TextField({ label, style, ...rest }: Props) {
       </AppText>
       <TextInput
         {...rest}
+        accessibilityLabel={label}
+        onChange={handleChange}
         onFocus={(e) => {
           setFocused(true);
           rest.onFocus?.(e);
@@ -51,6 +73,7 @@ export function TextField({ label, style, ...rest }: Props) {
         placeholderTextColor={theme.colors.muted}
         style={[
           styles.input,
+          { outlineStyle: 'none' } as object,
           rest.multiline ? styles.multiline : null,
           focused ? styles.inputFocused : null,
           style,

@@ -1,5 +1,5 @@
 # Cul-de-Chat: Technical Requirements Specification
-Last Updated: September 9, 2026
+Last Updated: September 16, 2026
 
 ## 1. Core Architecture
 The application will be a containerized system running in a Docker environment on a local, self-hosted server.
@@ -33,7 +33,8 @@ The application will be a containerized system running in a Docker environment o
 - **Framework**: React Native (Expo) in `mobile/`. Expo Router for screens. Local preview via `npx expo start --web`.
 - **Styling**: One theme object (`src/theme/theme.ts`) wrapped by `ThemeProvider`. Components and screens style through `useTheme` / `useStyles` and the UI kit (`Button`, `Card`, `Stack`, …). Do not hard-code colors or type sizes in pages.
 - **State Management**: React Context API + Hooks. `AuthProvider` holds the session.
-- **Page shell**: Authenticated screens render inside `AppShell`. Wide viewports use a left sidebar; compact viewports use a header + bottom tabs. Login is outside the shell. The Admin nav item and `/admin` page are shown only when the session user is `is_admin`.
+- **Page shell**: Authenticated screens render inside `AppShell`. Wide viewports use a left sidebar (no duplicate top header); compact viewports use a slim header + bottom tabs. Login is outside the shell. Nav tabs: Home, Boards, People, Messages, You; Admin is inserted before You when `is_admin`. Ionicons replace the old unicode glyphs. The Admin nav item and `/admin` page are shown only when the session user is `is_admin`.
+- **Direct messages**: REST under `/api/messages`. Conversations are unique per user pair (`user_low_id` / `user_high_id`). Open threads poll about every 5s; Socket.IO remains a follow-up.
 
 ## 6. Authentication & Security
 - **Login Method**: Standard Email & Password (`POST /api/auth/login`).

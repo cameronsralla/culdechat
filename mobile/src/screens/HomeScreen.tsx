@@ -3,18 +3,30 @@ import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { listFeed } from '../api/community';
 import { authorLabel, postBadge, type FeedPost } from '../api/types';
-import { AppText, EmptyState, ErrorBanner, Fab, PostCard, Stack } from '../components/ui';
+import {
+  AppText,
+  EmptyState,
+  ErrorBanner,
+  Fab,
+  HeroBand,
+  PageHeader,
+  PostCard,
+  Stack,
+} from '../components/ui';
 import { Screen } from '../components/layout/Screen';
+import { useCompactLayout } from '../components/layout/useCompactLayout';
 import { relativeTime } from '../lib/time';
 import { useStyles, type Theme } from '../theme';
 
 const stylesFor = (t: Theme) => ({
   wrap: { flex: 1 },
   more: { paddingVertical: t.space.md, alignItems: 'center' as const },
+  sectionLabel: { marginTop: t.space.xs },
 });
 
 export function HomeScreen() {
   const router = useRouter();
+  const compact = useCompactLayout();
   const styles = useStyles(stylesFor);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -61,13 +73,33 @@ export function HomeScreen() {
         }}
       >
         <Stack gap="lg">
+          <HeroBand>
+            <PageHeader
+              title="The square"
+              subtitle="What’s going on where you live — open to neighbors here, not the open web."
+              eyebrow="Neighbors only"
+              hideTitleOnCompact={false}
+              compact={compact}
+            />
+          </HeroBand>
           <ErrorBanner message={error} />
+          {posts.length > 0 ? (
+            <AppText variant="label" tone="muted" style={styles.sectionLabel}>
+              Recent
+            </AppText>
+          ) : null}
           {loading && posts.length === 0 ? <AppText tone="muted">Loading the square…</AppText> : null}
           {!loading && posts.length === 0 ? (
             <EmptyState
-              title={error ? 'Could not load the feed.' : 'No posts yet. Be the first to share something.'}
+              title={error ? 'Could not load the feed.' : 'Quiet for now.'}
+              subtitle={
+                error
+                  ? undefined
+                  : 'Nothing urgent. When you’re ready, share a note, ask, or hello with your neighbors.'
+              }
               actionLabel={error ? 'Try again' : 'Write a post'}
               onAction={error ? () => void load(true) : () => router.push('/posts/new')}
+              icon="newspaper-outline"
             />
           ) : null}
           {posts.map((post) => (
