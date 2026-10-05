@@ -101,9 +101,37 @@ func (s *Service) List(ctx context.Context, me uuid.UUID) ([]ConversationView, e
 	return out, nil
 }
 
+// WithUnit returns the caller's thread with the unit's current hidden primary.
+// A previous resident's thread is a different conversation and is not returned.
+func (s *Service) WithUnit(ctx context.Context, me uuid.UUID, unit string) (ConversationView, error) {
+	unit = strings.TrimSpace(unit)
+	if unit == "" {
+		return ConversationView{}, httpx.ErrBadRequest.WithMessage("unit number required")
+	}
+	id, err := s.q.ActiveHiddenByUnit(ctx, unit)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && id == me) {
+		return ConversationView{}, httpx.ErrNotFound
+	}
+	if err != nil {
+		return ConversationView{}, err
+	}
+	low, high := pair(me, id)
+	conv, err := s.q.FindConversation(ctx, dbq.FindConversationParams{UserLow: low, UserHigh: high})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ConversationView{}, httpx.ErrNotFound
+	}
+	if err != nil {
+		return ConversationView{}, err
+	}
+	return s.present(ctx, s.q, me, conv, "", false)
+}
+
 func (s *Service) Get(ctx context.Context, me, id uuid.UUID) (ConversationView, error) {
 	conv, err := s.loadMine(ctx, s.q, me, id)
 	if err != nil {
+		return ConversationView{}, err
+	}
+	if err := s.dropped(ctx, s.q, me, conv); err != nil {
 		return ConversationView{}, err
 	}
 	msgs, err := s.q.ListDirectMessages(ctx, conv.ID)
@@ -152,10 +180,30 @@ func (s *Service) reply(ctx context.Context, me, id uuid.UUID, body string) (Con
 	if err != nil {
 		return ConversationView{}, err
 	}
-	if conv.Status != "open" {
-		if conv.Status == "pending" {
-			return ConversationView{}, httpx.ErrConflict.WithMessage("accept the message before replying")
+	if err := s.dropped(ctx, q, me, conv); err != nil {
+		return ConversationView{}, err
+	}
+	switch conv.Status {
+	case "open":
+	case "pending":
+		return ConversationView{}, httpx.ErrConflict.WithMessage("accept the message before replying")
+	case "declined":
+		// A new try stays with this person. It must not follow the unit to whoever lives there now.
+		if conv.RequestedBy != me {
+			return ConversationView{}, httpx.ErrConflict.WithMessage("this conversation is closed")
 		}
+		contact, err := q.GetUserContact(ctx, otherID(conv, me))
+		if err != nil {
+			return ConversationView{}, err
+		}
+		if contact.Status != "active" {
+			return ConversationView{}, httpx.ErrNotFound.WithMessage("no one to message")
+		}
+		conv, err = s.advance(ctx, q, conv, me, !contact.DirectoryOptIn)
+		if err != nil {
+			return ConversationView{}, err
+		}
+	default:
 		return ConversationView{}, httpx.ErrConflict.WithMessage("this conversation is closed")
 	}
 	if err := s.append(ctx, q, conv.ID, me, body); err != nil {
@@ -257,6 +305,9 @@ func (s *Service) decide(ctx context.Context, me, id uuid.UUID, status string) (
 	if err != nil {
 		return ConversationView{}, err
 	}
+	if err := s.dropped(ctx, q, me, conv); err != nil {
+		return ConversationView{}, err
+	}
 	if conv.Status != "pending" {
 		return ConversationView{}, httpx.ErrConflict.WithMessage("nothing to respond to")
 	}
@@ -351,9 +402,23 @@ func (s *Service) present(ctx context.Context, q *dbq.Queries, me uuid.UUID, con
 	return view, nil
 }
 
+func (s *Service) dropped(ctx context.Context, q *dbq.Queries, me uuid.UUID, conv dbq.Conversation) error {
+	contact, err := q.GetUserContact(ctx, otherID(conv, me))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return httpx.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if contact.Status == "inactive" && !contact.DirectoryOptIn {
+		return httpx.ErrNotFound
+	}
+	return nil
+}
+
 func peerFrom(u dbq.GetUserContactRow) Peer {
-	p := Peer{UnitNumber: u.UnitNumber, Listed: u.DirectoryOptIn && u.Status == "active"}
-	if p.Listed {
+	p := Peer{UnitNumber: u.UnitNumber, Listed: u.DirectoryOptIn}
+	if u.DirectoryOptIn {
 		id := u.ID
 		p.ID = &id
 		p.DisplayName = u.DisplayName

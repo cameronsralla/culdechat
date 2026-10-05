@@ -26,6 +26,16 @@ func (q *Queries) ActiveHiddenByUnit(ctx context.Context, unitNumber string) (uu
 	return id, err
 }
 
+const deleteConversationsForUser = `-- name: DeleteConversationsForUser :exec
+DELETE FROM conversations
+WHERE user_low = $1 OR user_high = $1
+`
+
+func (q *Queries) DeleteConversationsForUser(ctx context.Context, userLow uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteConversationsForUser, userLow)
+	return err
+}
+
 const findConversation = `-- name: FindConversation :one
 SELECT id, user_low, user_high, status, requested_by, created_at, updated_at
 FROM conversations
@@ -172,6 +182,12 @@ JOIN LATERAL (
 ) m ON TRUE
 WHERE (c.user_low = $1 OR c.user_high = $1)
   AND (c.status <> 'declined' OR c.requested_by = $1)
+  AND NOT EXISTS (
+    SELECT 1 FROM users AS peer
+    WHERE peer.id = CASE WHEN c.user_low = $1 THEN c.user_high ELSE c.user_low END
+      AND peer.status = 'inactive'
+      AND peer.directory_opt_in = FALSE
+  )
 ORDER BY c.updated_at DESC
 `
 

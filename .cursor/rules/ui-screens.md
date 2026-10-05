@@ -88,7 +88,7 @@ Table of listed neighbors (name, email, unit) plus a unit-only row for each occu
 ## 3e. Chat
 Path: `/chat`
 
-A conversation list beside the open thread (on a narrow screen, one or the other). New chat searches listed neighbors and hidden units, then opens the thread — an existing one if you already have it. The first message and later replies use the composer at the bottom. Enter sends. An incoming request shows the message with Accept and Decline in place of the composer. Until they accept, the sender sees a waiting state and cannot add more. After a decline, the sender can send again from the same thread. A hidden neighbor is labeled by unit only. The list polls.
+A conversation list beside the open thread (on a narrow screen, one or the other). New chat searches listed neighbors and hidden units, then opens the thread with that person — or with whoever currently lives in the unit. A previous resident's messages stay on their own thread. A thread with an unlisted resident disappears when that resident is deactivated. The first message and later replies use the composer at the bottom. Enter sends. An incoming request shows the message with Accept and Decline in place of the composer. Until they accept, the sender sees a waiting state and cannot add more. After a decline, the sender can send again from that same thread. A hidden neighbor is labeled by unit only. The list polls.
 
 ## 4. Post Detail Screen
 Path: `/posts/{postId}`

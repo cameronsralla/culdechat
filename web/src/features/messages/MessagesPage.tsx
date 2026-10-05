@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ApiError } from '@/api/client';
 import { messagesApi, usersApi } from '@/api/endpoints';
 import type { Conversation, DirectoryEntry, MessagePeer } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
@@ -25,9 +26,9 @@ function rowKey(row: Draft) {
   return row.kind === 'person' && row.id ? row.id : `unit:${row.unit_number}`;
 }
 
-function findExisting(items: Conversation[], target: Draft) {
+function findPerson(items: Conversation[], target: Draft) {
   if (target.kind === 'person' && target.id) return items.find((c) => c.peer.id === target.id);
-  return items.find((c) => !c.peer.listed && c.peer.unit_number === target.unit_number);
+  return undefined;
 }
 
 function preview(item: Conversation) {
@@ -98,12 +99,24 @@ export function ChatPage() {
 
   const items = list.data ?? [];
 
+  const started = useRef<Draft | null>(null);
   useEffect(() => {
-    if (!start || list.isLoading) return;
-    const existing = findExisting(items, start);
-    setOpen(existing ? { mode: 'thread', id: existing.id } : { mode: 'draft', target: start });
+    if (!start || list.isLoading || started.current === start) return;
+    started.current = start;
     setComposing(false);
     navigate('/chat', { replace: true, state: null });
+    const person = findPerson(items, start);
+    if (start.kind === 'person') {
+      setOpen(person ? { mode: 'thread', id: person.id } : { mode: 'draft', target: start });
+      return;
+    }
+    void messagesApi.withUnit(start.unit_number).then(
+      (conv) => setOpen({ mode: 'thread', id: conv.id }),
+      (e) => {
+        if (e instanceof ApiError && e.status === 404) setOpen({ mode: 'draft', target: start });
+        else setErr(errorMessage(e));
+      },
+    );
   }, [start, list.isLoading, items, navigate]);
 
   useEffect(() => {
@@ -143,13 +156,23 @@ export function ChatPage() {
   const showThread = open.mode !== 'none';
 
   function choose(target: Draft) {
-    const existing = findExisting(items, target);
     setErr(null);
     setText('');
     setComposing(false);
     setSearch('');
     setQ('');
-    setOpen(existing ? { mode: 'thread', id: existing.id } : { mode: 'draft', target });
+    const person = findPerson(items, target);
+    if (target.kind === 'person') {
+      setOpen(person ? { mode: 'thread', id: person.id } : { mode: 'draft', target });
+      return;
+    }
+    void messagesApi.withUnit(target.unit_number).then(
+      (conv) => setOpen({ mode: 'thread', id: conv.id }),
+      (e) => {
+        if (e instanceof ApiError && e.status === 404) setOpen({ mode: 'draft', target });
+        else setErr(errorMessage(e));
+      },
+    );
   }
 
   function submit() {
@@ -160,7 +183,7 @@ export function ChatPage() {
       return;
     }
     if (thread?.status === 'declined' && thread.requested_by_me) {
-      send.mutate(thread.peer.id ? { content, user_id: thread.peer.id } : { content, unit_number: thread.peer.unit_number });
+      send.mutate({ content, conversation_id: thread.id });
       return;
     }
     if (draft) {

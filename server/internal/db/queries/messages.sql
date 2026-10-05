@@ -47,7 +47,17 @@ JOIN LATERAL (
 ) m ON TRUE
 WHERE (c.user_low = $1 OR c.user_high = $1)
   AND (c.status <> 'declined' OR c.requested_by = $1)
+  AND NOT EXISTS (
+    SELECT 1 FROM users AS peer
+    WHERE peer.id = CASE WHEN c.user_low = $1 THEN c.user_high ELSE c.user_low END
+      AND peer.status = 'inactive'
+      AND peer.directory_opt_in = FALSE
+  )
 ORDER BY c.updated_at DESC;
+
+-- name: DeleteConversationsForUser :exec
+DELETE FROM conversations
+WHERE user_low = $1 OR user_high = $1;
 
 -- name: GetUserContact :one
 SELECT id, unit_number, display_name, directory_opt_in, status

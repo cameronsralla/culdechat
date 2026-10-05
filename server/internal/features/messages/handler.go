@@ -2,6 +2,7 @@ package messages
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ func (m *Module) Routes(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireUser)
 		r.Get("/messages/conversations", m.list)
+		r.Get("/messages/with-unit", m.withUnit)
 		r.Get("/messages/conversations/{id}", m.get)
 		r.Post("/messages/conversations/{id}/accept", m.accept)
 		r.Post("/messages/conversations/{id}/decline", m.decline)
@@ -32,6 +34,15 @@ func (m *Module) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, http.StatusOK, items)
+}
+
+func (m *Module) withUnit(w http.ResponseWriter, r *http.Request) {
+	view, err := m.Svc.WithUnit(r.Context(), auth.MustIdentity(r.Context()).UserID, strings.TrimSpace(r.URL.Query().Get("number")))
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, view)
 }
 
 func (m *Module) get(w http.ResponseWriter, r *http.Request) {

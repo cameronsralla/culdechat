@@ -244,6 +244,13 @@ func (s *Service) SetStatus(ctx context.Context, actor, target uuid.UUID, active
 		if err := s.q.RevokeAllRefreshTokensForUser(ctx, target); err != nil {
 			return dbq.Resident{}, err
 		}
+		// An unlisted resident is only a unit in chat. Once they leave, that
+		// thread is dropped so it cannot be confused with the next person.
+		if !existing.DirectoryOptIn {
+			if err := s.q.DeleteConversationsForUser(ctx, target); err != nil {
+				return dbq.Resident{}, err
+			}
+		}
 	}
 	return s.Get(ctx, target)
 }

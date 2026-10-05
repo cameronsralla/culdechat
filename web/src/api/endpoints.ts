@@ -120,6 +120,7 @@ export const adminApi = {
 export const messagesApi = {
   list: () => api.get<Conversation[]>('/messages/conversations'),
   get: (id: string) => api.get<Conversation>(`/messages/conversations/${id}`),
+  withUnit: (number: string) => api.get<Conversation>(`/messages/with-unit?number=${encodeURIComponent(number)}`),
   send: (input: { content: string; user_id?: string; unit_number?: string; conversation_id?: string }) =>
     api.post<Conversation>('/messages', input),
   accept: (id: string) => api.post<Conversation>(`/messages/conversations/${id}/accept`),

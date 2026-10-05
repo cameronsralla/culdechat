@@ -611,6 +611,116 @@ func TestHiddenUnitMessage(t *testing.T) {
 	}
 }
 
+func TestNewPrimaryDoesNotInheritChat(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	ada := registerResident(t, admin, "ada.turn@test.local", "T1", "Ada Turn")
+	bea := registerResident(t, admin, "bea.turn@test.local", "T2", "Bea Turn")
+	want(t, call(t, "PATCH", "/api/me", bea, map[string]any{"display_name": "Bea Turn", "directory_opt_in": false}), 200)
+
+	r := call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "T2", "content": "old history"})
+	want(t, r, 200)
+	oldID := r.Body["id"].(string)
+	want(t, call(t, "POST", "/api/messages/conversations/"+oldID+"/decline", bea, nil), 200)
+
+	tag, err := appRef.Pool.Exec(context.Background(), `UPDATE users SET is_primary = false WHERE email = $1`, "bea.turn@test.local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag.RowsAffected() != 1 {
+		t.Fatalf("release primary: %s", tag)
+	}
+	cal := registerResident(t, admin, "cal.turn@test.local", "T2", "Cal Turn")
+	want(t, call(t, "PATCH", "/api/me", cal, map[string]any{"display_name": "Cal Turn", "directory_opt_in": false}), 200)
+
+	r = call(t, "GET", "/api/messages/with-unit?number=T2", ada, nil)
+	want(t, r, 404)
+	r = call(t, "GET", "/api/messages/conversations", cal, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), oldID) || strings.Contains(string(r.Raw), "old history") {
+		t.Fatalf("new resident inherited history: %s", r.Raw)
+	}
+	want(t, call(t, "GET", "/api/messages/conversations/"+oldID, cal, nil), 404)
+
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"conversation_id": oldID, "content": "still for Bea"})
+	want(t, r, 200)
+	if r.Body["id"] != oldID {
+		t.Fatalf("resend followed the unit: %s", r.Raw)
+	}
+	if strings.Contains(string(r.Raw), "Cal Turn") {
+		t.Fatalf("resend named the new resident: %s", r.Raw)
+	}
+
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "T2", "content": "welcome"})
+	want(t, r, 200)
+	newID := r.Body["id"].(string)
+	if newID == oldID {
+		t.Fatalf("unit message reused the previous resident's thread: %s", r.Raw)
+	}
+	msgs := r.Body["messages"].([]any)
+	if len(msgs) != 1 || msgs[0].(map[string]any)["body"] != "welcome" {
+		t.Fatalf("new thread: %s", r.Raw)
+	}
+	if strings.Contains(string(r.Raw), "old history") || strings.Contains(string(r.Raw), "Cal Turn") {
+		t.Fatalf("new thread leaked history or identity: %s", r.Raw)
+	}
+
+	r = call(t, "GET", "/api/messages/with-unit?number=T2", ada, nil)
+	want(t, r, 200)
+	if r.Body["id"] != newID {
+		t.Fatalf("with-unit: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/messages/conversations/"+newID, cal, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), "old history") || strings.Contains(string(r.Raw), "still for Bea") {
+		t.Fatalf("new resident saw the previous thread: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/messages/conversations/"+oldID, bea, nil)
+	want(t, r, 200)
+	if !strings.Contains(string(r.Raw), "old history") || !strings.Contains(string(r.Raw), "still for Bea") {
+		t.Fatalf("previous resident lost their thread: %s", r.Raw)
+	}
+}
+
+func TestDeactivateUnlistedDropsChat(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	ada := registerResident(t, admin, "ada.drop@test.local", "D1", "Ada Drop")
+	bea := registerResident(t, admin, "bea.drop@test.local", "D2", "Bea Drop")
+	cay := registerResident(t, admin, "cay.drop@test.local", "D3", "Cay Drop")
+	want(t, call(t, "PATCH", "/api/me", bea, map[string]any{"display_name": "Bea Drop", "directory_opt_in": false}), 200)
+	beaID := call(t, "GET", "/api/me", bea, nil).Body["id"].(string)
+	cayID := call(t, "GET", "/api/me", cay, nil).Body["id"].(string)
+
+	r := call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "D2", "content": "hidden thread"})
+	want(t, r, 200)
+	hiddenID := r.Body["id"].(string)
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"user_id": cayID, "content": "listed thread"})
+	want(t, r, 200)
+	listedID := r.Body["id"].(string)
+
+	want(t, call(t, "PUT", "/api/admin/users/"+beaID+"/status", admin, map[string]bool{"active": false}), 200)
+	r = call(t, "GET", "/api/messages/conversations", ada, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), hiddenID) || strings.Contains(string(r.Raw), "hidden thread") {
+		t.Fatalf("unlisted thread still listed: %s", r.Raw)
+	}
+	want(t, call(t, "GET", "/api/messages/conversations/"+hiddenID, ada, nil), 404)
+
+	want(t, call(t, "PUT", "/api/admin/users/"+beaID+"/status", admin, map[string]bool{"active": true}), 200)
+	r = call(t, "GET", "/api/messages/conversations", ada, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), hiddenID) || strings.Contains(string(r.Raw), "hidden thread") {
+		t.Fatalf("deactivation should drop the thread for good: %s", r.Raw)
+	}
+
+	want(t, call(t, "PUT", "/api/admin/users/"+cayID+"/status", admin, map[string]bool{"active": false}), 200)
+	r = call(t, "GET", "/api/messages/conversations/"+listedID, ada, nil)
+	want(t, r, 200)
+	peer := r.Body["peer"].(map[string]any)
+	if peer["display_name"] != "Cay Drop" || !strings.Contains(string(r.Raw), "listed thread") {
+		t.Fatalf("listed thread should stay named: %s", r.Raw)
+	}
+}
+
 func TestUnits(t *testing.T) {
 	admin, _ := login(t, adminEmail, adminPass)
 	r := call(t, "POST", "/api/admin/units", admin, map[string]any{"number": "Z1"})
