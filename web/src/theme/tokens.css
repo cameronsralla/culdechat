@@ -1,0 +1,107 @@
+/*
+ * Design tokens — the single visual source of truth.
+ * Tailwind v4 reads @theme and exposes each token as a utility
+ * (bg-brand, text-ink, rounded-md, shadow-card, ...). Components must use
+ * these utilities; never hard-code colors, sizes, or radii.
+ *
+ * Direction: lagoon teal town square on warm stone paper — cozy, clear,
+ * neighborly. Connection over engagement; calm when idle.
+ */
+@import 'tailwindcss';
+
+@theme {
+  /* Reset Tailwind's palette; only our tokens exist. */
+  --color-*: initial;
+
+  --color-brand: #0c7c86;
+  --color-brand-dark: #085a62;
+  --color-brand-soft: #ddf0f2;
+  --color-brand-line: #a9d4da;
+  --color-brand-wash: #e8f5f6;
+
+  --color-paper: #f0ebe3;
+  --color-paper-deep: #e2d9cc;
+  --color-surface: #fffdf9;
+  --color-surface-muted: #f7f2ea;
+
+  --color-ink: #1c2529;
+  --color-muted: #5a656c;
+  --color-line: #d9d0c2;
+  --color-line-soft: #ebe3d7;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #f9e8e6;
+  --color-pin: #f3e6c4;
+  --color-pin-line: #e0cc8f;
+  --color-white: #ffffff;
+  --color-overlay: rgb(28 37 41 / 0.04);
+  --color-ink-faint: rgb(28 37 41 / 0.06);
+
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Type scale: size / line-height / tracking (used by AppText variants). */
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.625rem;
+  --text-display--letter-spacing: -0.05rem;
+  --text-title: 1.625rem;
+  --text-title--line-height: 2rem;
+  --text-title--letter-spacing: -0.025rem;
+  --text-subtitle: 1.0625rem;
+  --text-subtitle--line-height: 1.375rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-label--letter-spacing: 0.025rem;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.125rem;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 6px 20px rgb(28 37 41 / 0.06);
+  --shadow-raised: 0 10px 28px rgb(8 90 98 / 0.28);
+  --shadow-soft: 0 2px 10px rgb(28 37 41 / 0.04);
+
+  /* Layout: the md breakpoint is the compact/wide switch (phone vs laptop). */
+  --breakpoint-*: initial;
+  --breakpoint-md: 50rem; /* 800px */
+  --breakpoint-lg: 64rem;
+
+  --spacing-sidebar: 264px;
+  --spacing-content: 720px;
+  --spacing-auth: 440px;
+  --spacing-control: 52px;
+  --spacing-control-sm: 40px;
+  --spacing-tabbar: 64px;
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+  * {
+    border-color: var(--color-line);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+}

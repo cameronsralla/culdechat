@@ -1,0 +1,94 @@
+# Production stack for one community. Copy .env.example to .env, fill it in,
+# then: docker compose up -d
+#
+#   internet ──► caddy (:80/:443, auto TLS) ──► web  (static PWA)
+#                                           └─► /api, /healthz, /readyz ──► server
+#   server ──► db (postgres)      backup ──► nightly pg_dump + media snapshot
+name: culdechat
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - server
+
+  web:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ../../server
+      target: prod
+      args:
+        VERSION: ${VERSION:-dev}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: prod
+      LISTEN_ADDR: ":8080"
+      PUBLIC_URL: https://${DOMAIN}
+      DATABASE_URL: postgres://culdechat:${DB_PASSWORD}@db:5432/culdechat?sslmode=disable
+      TRUSTED_PROXIES: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      MEDIA_DIR: /data/media
+    volumes:
+      - media_data:/data/media
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: culdechat
+      POSTGRES_USER: culdechat
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U culdechat -d culdechat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: culdechat
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: culdechat
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - media_data:/data/media:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  media_data:
+  caddy_data:
+  caddy_config:

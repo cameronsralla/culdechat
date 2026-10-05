@@ -20,56 +20,52 @@ It is meant to replace the messy mix of building group chats, HOA email, and cit
 
 ### Product docs
 - Vision & mission: [docs/vision.md](docs/vision.md)
+- **Architecture & stack:** [docs/architecture.md](docs/architecture.md) — Docker-first community test, responsive PWA, classic server–client
 - Feature backlog: [docs/feature-backlog.md](docs/feature-backlog.md)
 - Non-goals: [docs/non-goals.md](docs/non-goals.md)
 - Competitive landscape: [docs/competitive-landscape.md](docs/competitive-landscape.md)
 - Design direction: [docs/design-direction.md](docs/design-direction.md)
 - Admin guide (stub): [docs/admin-guide.md](docs/admin-guide.md)
 
-### What’s in today
-- **Boards & square feed** — interest boards; chronological feed across the community
-- **Posts, comments, reactions** — open discussion inside the walls
-- **Admin bulletins** — pinned announcements
-- **Directory** — opt-in neighbor listing by name/unit (hidden residents still reachable by unit)
-- **Direct messages** — private 1:1 messaging between neighbors
+### Repo layout
+| Path | What |
+|---|---|
+| `server/` | Go API — chi, slog, pgx + sqlc, goose migrations, argon2id + JWT/refresh auth |
+| `web/` | Responsive PWA — Vite, React 19, TypeScript, React Router, TanStack Query, Tailwind v4 tokens |
+| `deploy/dev/` | Local Compose: Postgres, Mailpit, server (hot reload), web (Vite) |
+| `deploy/prod/` | Community instance: Caddy (auto TLS) → web + server, Postgres, nightly backup sidecar |
+| `lab/` | The earlier Gin + Expo mock. Reference only. |
 
-### Core tech
-- **Backend**: Go (Gin)
-- **API**: REST (+ Socket.IO planned for real-time)
-- **Database**: PostgreSQL
-- **Frontend**: React Native (Expo, in `mobile/`)
-- **Deployment**: Docker
+The core framework (auth, users/directory, admin roster + invites, settings, logging, hardening, layout shell, component kit) is built. Boards, feed, calendar, messages, and the rest land on it next in the order set by [docs/feature-backlog.md](docs/feature-backlog.md).
 
 ### Specifications
-Authoritative, living specs are kept in `.cursor/rules/`:
+Living specs are kept in `.cursor/rules/`:
+- [Technical Requirements Specification](.cursor/rules/technical-spec.md) — what `server/` and `web/` do today
 - [Functional Requirements Specification](.cursor/rules/functional-spec.md)
-- [Technical Requirements Specification](.cursor/rules/technical-spec.md)
 - [API & Data Specifications](.cursor/rules/api-data-spec.md)
 - [UI Screens Specification](.cursor/rules/ui-screens.md)
 - [Engineering backlog](docs/backlog.md)
 
-Generated HTTP docs (Swagger UI) are served at `/api/docs/index.html` when `CULDECHAT_DOCS=true`. Regenerate with `make docs` after changing handlers.
-
 ### Local development
-```bash
-docker compose -f infra/dev/docker-compose.yml up --build
-cd mobile && npx expo start --web
-make test
-```
-
-Local admin: `admin@culdechat.local` / `changeme123`. Seed fake residents with `make seed` (same password). The Expo web app talks to the API at `http://127.0.0.1:8080/api` (override with `EXPO_PUBLIC_API_URL`).
-
-Postgres and the API bind to localhost only. The compose stack bootstraps a local admin (`admin@culdechat.local` / `changeme123`) and allows the local JWT secret via `CULDECHAT_ALLOW_INSECURE_JWT=true`. Invite emails are caught by Mailpit at [http://127.0.0.1:8025](http://127.0.0.1:8025) unless you put real SMTP settings in gitignored `infra/dev/.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASS`, `SMTP_STARTTLS=true`). Branding artwork lives in `assets/branding/logo.jpg`.
-
-Optional TLS (needs a real hostname):
+Requires Docker. Go 1.26 and Node 24 only if you want to run things outside Compose.
 
 ```bash
-CULDECHAT_DOMAIN=your.domain docker compose -f infra/dev/docker-compose.yml --profile tls up --build
+make up          # db + mailpit + server (:8080) + web (:5173)
+make test        # Go suite against the dev Postgres
+make web-test    # Vitest
+make lint        # go vet, eslint, tsc
+make sqlc        # regenerate internal/db/dbq after editing queries/*.sql
 ```
 
-### Operations
-- HTTPS (Let's Encrypt), JWT auth, bcrypt for password hashing.
-- Logs via Promtail/Loki/Grafana; daily PostgreSQL backups recommended.
+Local admin: `admin@culdechat.local` / `changeme123`. Invite emails land in Mailpit at [http://127.0.0.1:8025](http://127.0.0.1:8025); in dev the invite response also includes the registration link. Postgres and the server bind to localhost only. Set `WEB_PORT` if 5173 is taken.
+
+### Running a community instance
+```bash
+cd deploy/prod
+cp .env.example .env   # set DOMAIN, ACME_EMAIL, DB_PASSWORD, JWT_SECRET, SMTP_*, BOOTSTRAP_ADMIN_*
+docker compose up -d --build
+```
+Point your domain's A/AAAA record at the host; Caddy obtains the certificate. Backups are written nightly to `BACKUP_DIR`. See [docs/admin-guide.md](docs/admin-guide.md).
 
 ### License
 See [LICENSE](./LICENSE).

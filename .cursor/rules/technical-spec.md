@@ -1,56 +1,58 @@
 # Cul-de-Chat: Technical Requirements Specification
-Last Updated: September 16, 2026
+Last Updated: October 4, 2026
+
+**Framing:** This file describes **what the code in `server/` and `web/` does today**. Target topology, locked stack, and cross-cutting decisions are authoritative in [docs/architecture.md](../../docs/architecture.md). The earlier Gin + Expo mock lives in `lab/` for reference only.
 
 ## 1. Core Architecture
-The application will be a containerized system running in a Docker environment on a local, self-hosted server.
-
-- **Backend**: Go (Gin framework)
-- **Database**: PostgreSQL
-- **Frontend**: React Native (Expo, `mobile/`)
-- **API Style**: REST
-- **Real-time**: Socket.IO
-- **Deployment**: Docker containers
+- **Backend**: Go 1.26, `server/` — `chi` router, `log/slog`, `pgx/v5` + `sqlc` (generated package `internal/db/dbq`), `goose` embedded migrations.
+- **Database**: PostgreSQL 16 (`citext` for emails, `pgcrypto` for UUIDs).
+- **Frontend**: `web/` — Vite 7, React 19, TypeScript, React Router 7, TanStack Query 5, Tailwind v4 (`@theme` tokens), Radix primitives, `vite-plugin-pwa`, Vitest + Testing Library.
+- **API style**: REST JSON under `/api`. Errors are always `{"error":{"code","message"}}`.
+- **Deployment**: `deploy/dev` Compose for development; `deploy/prod` Compose (Caddy → web + server, db, backup) for a community instance behind public DNS + HTTPS.
 
 ## 2. Platform & Deployment
-- **Target Platform**: Desktop web first (Expo web), then the same codebase on iOS/Android. Layout is adaptive: sidebar above 800px, bottom tabs below.
-- **Hosting**: Self-hosted on a server within the apartment complex. Requires network configuration (static IP or DDNS) and physical security.
+- **Client**: responsive PWA. `AppShell` renders a sidebar at ≥800px and a bottom tab bar below (`useViewport`). Installable; `registerType: 'prompt'` shows an update banner on new releases; network-first (no API caching).
+- **Dev**: `make up` starts db (`127.0.0.1:5432`), Mailpit (`:8025`), server with `air` hot reload (`:8080`), web Vite (`:5173`, override `WEB_PORT`). Local admin `admin@culdechat.local` / `changeme123`. `RATE_LIMIT=false` in dev.
+- **Prod**: copy `deploy/prod/.env.example` → `.env`, set `DOMAIN`, `ACME_EMAIL`, `DB_PASSWORD`, `JWT_SECRET`, `SMTP_*`, `BOOTSTRAP_ADMIN_*`; `docker compose up -d`. Server image is distroless static; web image is nginx with SPA fallback.
 
 ## 3. Backend Architecture
-- **Framework**: Gin for the REST API in Go.
-- **API documentation**: OpenAPI/Swagger 2.0 is generated from handler comments (`make docs`) and served at `/api/docs/index.html` only when `CULDECHAT_DOCS=true`.
-- **Sessions**: Short-lived access JWTs plus hashed refresh tokens (30 days). Auth middleware reloads the user from the database on every request. `AdminRequired` authenticates and checks `is_admin` without nesting `AuthRequired` (which would call `Next` and run the handler before the admin check).
-- **Real-time Features**: Socket.IO will be implemented on the Go backend to manage real-time messaging and notifications (not in MVP).
+- **Wiring**: `internal/app.New` opens the pool, runs migrations, bootstraps the admin (only when `users` is empty), builds services, and mounts modules. `cmd/server/main.go` adds the `http.Server` with timeouts and SIGTERM graceful shutdown.
+- **Middleware order**: `RequestID → RealIP(TRUSTED_PROXIES) → Logger → Recover → Timeout → BodyLimit(1 MiB) → SecurityHeaders(HSTS in prod) → CORS(exact allow-list)`; under `/api`: `Authenticate` (parses bearer, never rejects) → `RateLimit.ByUser`.
+- **Feature module pattern**: `internal/features/<name>/{handler.go,service.go}` + `internal/db/queries/<name>.sql`. `Module.Routes(chi.Router)` applies `auth.RequireUser` / `auth.RequireAdmin` per group. Services return `httpx.Error` values (`ErrBadRequest`, `ErrUnauthorized`, `ErrForbidden`, `ErrNotFound`, `ErrConflict`, …) with `.WithMessage()` / `.Wrap()`; handlers call `httpx.Fail`.
+- **Binding**: `httpx.Bind` requires `application/json`, rejects unknown fields and trailing data, and calls `Validate()` when the request type implements it (`httpx.Fields` collects field errors).
+- **Config** (`internal/config`): env only. Required: `DATABASE_URL`, `JWT_SECRET` (≥32 bytes). Prod additionally requires https `PUBLIC_URL`, no `*` in `CORS_ORIGINS`, and `SMTP_HOST`/`SMTP_FROM`. `CORS_ORIGINS` defaults to `PUBLIC_URL`.
+- **Mail** (`internal/mail`): SMTP with optional STARTTLS/auth; when `SMTP_HOST` is unset the message is logged instead of sent (dev).
+- **Health**: `/healthz` liveness; `/readyz` pings the DB and fails while migrations are pending.
+- **Realtime / jobs**: not yet built. Targets (WebSocket from the server, in-process scheduler with Postgres locks) are in the architecture doc.
 
 ## 4. Database & Data Management
-- **Database**: PostgreSQL running in a Docker container.
-- **Media Storage**: User-uploaded files will be stored on the local server's filesystem, with strict backend validation for file type and size.
-- **Email**: Outbound mail goes through `Mailer` (`SMTPMailer`) using one community mailbox (`SMTP_HOST` / `SMTP_PORT` / `SMTP_FROM`, plus `SMTP_USER` / `SMTP_PASS` when the provider requires auth). Callers build a `MailMessage` (to, subject, plain-text body) and `Send`. Invites use `InviteMail`. STARTTLS is used when credentials are set or `SMTP_STARTTLS=true`. Local development uses Mailpit as the SMTP sink. Do not send as the logged-in admin's personal inbox (no per-admin OAuth). Optional `CULDECHAT_APP_URL` adds a `/register?token=` link on invites.
-- **Data Retention Policies**:
-  - **User Data**: A soft delete policy will be used. Data is flagged as inactive for 30 days before a scheduled job performs a permanent hard delete.
-  - **Chat Messages**: A Time-to-Live (TTL) of 6 months will be enforced via a scheduled job.
+- **Schema** (`00001_init.sql`): `users` (email citext unique, unit_number, display_name, password_hash nullable until activated, is_admin, status `invited|active|inactive`, directory_opt_in), `invites` (token_hash, passcode_hash, expires_at, consumed_at), `refresh_tokens` (token_hash, family_id, expires_at, revoked_at, user_agent, ip), `settings` (key, JSONB value, updated_by).
+- **Migrations**: add `internal/db/migrations/0000N_name.sql` with `-- +goose Up` / `-- +goose Down`. Run on boot; server refuses to start if the DB is ahead of the binary.
+- **Queries**: write SQL in `internal/db/queries/*.sql` with sqlc annotations, run `make sqlc`. Never hand-write scan code.
+- **Settings** (`internal/settings`): keys `community_name`, `capability_tier` (`CORE|STANDARD|PLUS`), `invite_expiry_hours`; each has a validator. Public keys readable by any resident at `GET /api/settings`; full list/edit admin-only at `/api/admin/settings`. 30s in-process cache, invalidated on write.
+- **Media**: not yet built (media volume and `MEDIA_DIR` are provisioned).
+- **Retention**: not yet built. Targets: soft-delete → 30-day hard delete, DM TTL 6 months.
 
 ## 5. Frontend Architecture
-- **Framework**: React Native (Expo) in `mobile/`. Expo Router for screens. Local preview via `npx expo start --web`.
-- **Styling**: One theme object (`src/theme/theme.ts`) wrapped by `ThemeProvider`. Components and screens style through `useTheme` / `useStyles` and the UI kit (`Button`, `Card`, `Stack`, …). Do not hard-code colors or type sizes in pages.
-- **State Management**: React Context API + Hooks. `AuthProvider` holds the session.
-- **Page shell**: Authenticated screens render inside `AppShell`. Wide viewports use a left sidebar (no duplicate top header); compact viewports use a slim header + bottom tabs. Login is outside the shell. Nav tabs: Home, Boards, People, Messages, You; Admin is inserted before You when `is_admin`. Ionicons replace the old unicode glyphs. The Admin nav item and `/admin` page are shown only when the session user is `is_admin`.
-- **Direct messages**: REST under `/api/messages`. Conversations are unique per user pair (`user_low_id` / `user_high_id`). Open threads poll about every 5s; Socket.IO remains a follow-up.
+- **Tokens**: `src/theme/tokens.css` is the only place colors, type scale, radii, shadows, breakpoints, and layout widths are defined. Components use the generated utilities (`bg-brand`, `text-title`, `rounded-md`, `w-sidebar`, …). `lib/cn.ts` wraps `tailwind-merge` and is taught the custom type scale.
+- **Layout** (`src/layout/`): `AppShell` (sidebar vs tabs), `Sidebar`, `TabBar`, `Header` (compact only), `Screen` (page frame: compact header, content width, tab-bar padding), `AuthShell`, `LoadingScreen`, `nav.ts` (single nav list; admin item filtered by role).
+- **UI kit** (`src/components/ui/`): `Text` (variants display/title/subtitle/body/label/caption), `Button` (primary/secondary/ghost/danger; loading; asChild), `Card`, `TextField` (label/hint/error wired for a11y), `Avatar`, `Badge`, `Stack`, `ListGroup`/`ListRow`, `EmptyState`, `ErrorBanner`, `PageHeader`, `Fab`, `Toast` (`useToast`), `Icon`, `Logo`. Kit components are breakpoint-agnostic.
+- **Data**: `api/client.ts` attaches the bearer token, refreshes once on 401 (single-flight), retries, and signs out if refresh fails. Tokens persist in `localStorage` (`culdechat.session`). `api/endpoints.ts` holds typed wrappers; `api/types.ts` mirrors server shapes. TanStack Query for server state.
+- **Auth**: `AuthProvider` restores the session on boot via `GET /api/me`; guards `RequireUser`, `RequireAdmin`, `RequireAnonymous` in `auth/guards.tsx`.
+- **Routes**: `/login`, `/register?token=` (invite completion), `/` (Square), `/directory`, `/you`, `/admin`. Add pages under `src/features/<name>/`.
 
 ## 6. Authentication & Security
-- **Login Method**: Standard Email & Password (`POST /api/auth/login`).
-- **Session Management**: Access JWT plus refresh token stored in SecureStore on native and `localStorage` on web. The API client refreshes on 401 and hydrates `/auth/me` on launch.
-- **Security MVP**:
-  - All traffic will be served over HTTPS (using a Let's Encrypt certificate) in front of Gin (optional Caddy profile).
-  - User passwords will be hashed using bcrypt and must be at least 8 characters.
-  - `JWT_SECRET` must be set to a unique value; the process refuses the well-known default unless `CULDECHAT_ALLOW_INSECURE_JWT=true`.
-  - Invite tokens and refresh tokens are stored hashed. Login, complete-registration, and refresh are rate limited (local compose sets `CULDECHAT_RATE_LIMIT=off` so `make seed` can create several accounts).
-  - The API allows CORS from local Expo web origins (`http://localhost` / `http://127.0.0.1` any port, plus `CULDECHAT_CORS_ORIGINS`).
-  - Postgres and the API bind to localhost in local compose. Optional Caddy (`--profile tls`) terminates HTTPS when `CULDECHAT_DOMAIN` is set.
+- **Passwords**: argon2id (m=64 MiB, t=3, p=2), PHC string. Minimum 10 characters. Unknown-user logins burn a dummy verification to equalize timing.
+- **Sessions**: HS256 access JWT (15 min, `sub` = user id, `adm` flag) + opaque refresh token (32 random bytes, SHA-256 hashed at rest, 30 days). Refresh **rotates** within a family; presenting a revoked token revokes the whole family (reuse detection). Logout revokes the device family; `logout-all` and password change revoke every session.
+- **Invites**: admin creates an invited user → emailed link `PUBLIC_URL/register?token=…` **plus** a 6-digit passcode shown to the admin for out-of-band delivery. Completion requires token + passcode, sets password and display name, consumes the invite. Token hashes only in the DB; `invite_url` is returned in the API response only in dev.
+- **Guards**: `RequireUser` (401) and `RequireAdmin` (403). Admins cannot deactivate or demote themselves. Deactivation revokes all refresh tokens.
+- **Rate limits**: credential routes 10/min burst 5 per IP; other `/api` routes 300/min burst 60 per user (IP fallback). `429` with `Retry-After`.
+- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, restrictive CSP, `Permissions-Policy`; HSTS in prod.
+- **CORS**: exact-origin allow-list from `CORS_ORIGINS`; methods GET/POST/PUT/PATCH/DELETE/OPTIONS; headers Authorization, Content-Type; exposes Content-Length, X-Request-Id; credentials off (bearer tokens); preflight cached 10 min; disallowed preflights get 403.
 
 ## 7. Operations & Maintenance
-- **Local seed**: `make seed` (`infra/dev/seed.sh`) invites and completes a handful of fake residents (Maya, Jordan, Priya, Sam, Riley, plus `seeduser@example.com`). Password is `changeme123`. Most opt into the directory; Riley stays hidden so unit-number DMs can be tested. Safe to re-run.
-- **Initial Scale**: The system will be architected for an initial load of ~100 users.
-- **Logging**: The PLG Stack (Promtail, Loki, Grafana) will be used for a self-hosted, real-time log monitoring solution.
-- **Backups**: A daily, automated backup of the PostgreSQL database is strongly recommended. This can be achieved with a simple cron job in a Docker container that runs pg_dump.
-
-
+- **Tests**: `make test` runs the Go suite (`internal/app/app_test.go`) against a throwaway `culdechat_test` database on the dev Postgres (`TEST_DATABASE_URL` to override). `make web-test` runs Vitest; `make lint` runs `go vet`, eslint, and `tsc`.
+- **Logging**: `slog` to stdout — text in dev, JSON in prod; one `http` line per request with `request_id`, method, path, status, bytes, `dur_ms`, ip, `user_id`. Panics are recovered and logged with a stack.
+- **Backups**: `deploy/prod` `backup` service runs on start and nightly at 03:00: `pg_dump --format=custom` + `media-*.tar.gz` into `BACKUP_DIR`, pruned after `BACKUP_KEEP_DAYS`.
+- **Upgrade**: rebuild/pull images, `docker compose up -d`; migrations apply on server boot.
+- **Initial scale**: ~100 users on a single node.

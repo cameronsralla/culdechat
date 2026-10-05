@@ -1,7 +1,7 @@
 # Cul-de-Chat: Non-Goals & Avoid List
-Last Updated: September 30, 2026
+Last Updated: October 1, 2026
 
-Reference while building. If a feature request pulls toward these, pause and check [vision.md](./vision.md).
+Reference while building. If a feature request pulls toward these, pause and check [vision.md](./vision.md) and [architecture.md](./architecture.md).
 
 ---
 
@@ -15,6 +15,7 @@ Reference while building. If a feature request pulls toward these, pause and che
 | **Notification volume as growth tactic** | Utility alerts only; Nextdoor’s own turnaround includes cutting noisy pings |
 | **Crime-feed / “suspicious person” culture as a default** | Damages trust; Nextdoor’s reputation problem; not our mission |
 | **Mothership as full managed hosting for every community** | Provisioning aids yes; babysitting every deploy no (unless economics radically change) |
+| **Mothership required at instance runtime** | Instance must run standalone after deploy; mothership is optional aids only ([architecture.md](./architecture.md)) |
 
 ---
 
@@ -28,6 +29,8 @@ Reference while building. If a feature request pulls toward these, pause and che
 | **City-wide or interest-only communities with no place** | Breaks “local container” | Operator can define unit; we guide toward place-based |
 | **Heavy gamification** (streaks, points, leaderboards) | Fun level 3 — warm, not arcade | Light badges only if they serve stewardship (maybe later) |
 | **Opaque private group chats as the main social layer** | Cliques / side channels undercut the open town square | 1:1 DMs stay; N>2 groups **parked** — only revisit with transparency rules (see feature backlog) |
+| **Native store apps as a requirement for the first community test** | Self-hosted URL + responsive PWA is the locked client path | Optional native shell later if iOS push proves necessary |
+| **True P2P mesh as the primary architecture** | Breaks simple admin, digests, off-site reach, backups | Server stays source of truth; peer media-assist only as a parked appendix |
 
 ---
 

@@ -1,0 +1,26 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API and probes go to the Go server. Caddy sets X-Forwarded-For; the
+	# server trusts it only from the compose network (TRUSTED_PROXIES).
+	@api path /api/* /healthz /readyz
+	handle @api {
+		reverse_proxy server:8080
+	}
+
+	# Everything else is the PWA (static, SPA fallback handled by the web image).
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

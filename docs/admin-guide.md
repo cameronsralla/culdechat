@@ -3,7 +3,7 @@ Last Updated: September 30, 2026
 
 Status: **stub.** Grows alongside the product. Vision and “why” come first; manuals follow.
 
-For product intent see [vision.md](./vision.md).
+For product intent see [vision.md](./vision.md). Deploy/stack target: [architecture.md](./architecture.md).
 
 ---
 
@@ -22,7 +22,7 @@ It is open source, non-commercial in spirit, and meant to be run by a community 
 <!-- Fill as features stabilize -->
 
 ### Planned topics
-- Install / first-run wizard (self-host vs mothership provisioning aids)
+- Near-term: Docker Compose + public DNS + HTTPS (see [architecture.md](./architecture.md)); install wizard later when going wide
 - Defining the first admin; promoting more admins later
 - Inviting and offboarding residents
 - Bulletins and pins

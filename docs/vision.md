@@ -1,7 +1,9 @@
 # Cul-de-Chat: Vision & Mission
 Last Updated: September 30, 2026
 
-Status: **stable enough to drive product/design** — still editable after review. Architecture deep-dives are deferred; this doc stays at the *why* and *what kind of thing this is*.
+Status: **stable enough to drive product/design** — still editable after review. This doc stays at the *why* and *what kind of thing this is*.
+
+**Stack / architecture:** locked in [architecture.md](./architecture.md) — Docker-first community test, responsive PWA, classic server–client. Current repo is a mock/lab toward that target.
 
 UI feel: best-guess pass applied to the mock; assumptions and next phases in [design-direction.md](./design-direction.md).
 
@@ -67,7 +69,7 @@ Design so the **lowest practical hardware** can run a meaningful core, and stron
 - **Email is Core** — onboarding depends on it.
 - **Media direction:** eventually support **all useful media types** the deployment can handle; tiers and retention limit *what’s enabled*, not a permanent text-only product. On low resources, prefer strict lifetime / retention over a hard “no media” wall — exact rules TBD in the tech pass.
 - A **system check** (deploy/runtime) should determine which capabilities to enable.
-- **Architecture note (parked):** classic server/client is the current shape; peer-to-peer / mobile-centric models are worth weighing later. Do not let that debate block product planning now.
+- **Architecture:** classic server/client is locked; see [architecture.md](./architecture.md). P2P parked as an appendix.
 
 ### Provisioning & mothership
 - **Mothership helps you set up; it does not run your community for you.**
@@ -121,24 +123,33 @@ Intended structure:
 
 Build this **as we go**, not as a big-bang doc at the end.
 
+### Architecture & stack
+[architecture.md](./architecture.md) — target topology, Docker-first deploy, PWA client, future wizard/OS installers.
+
 ### Design direction
-[design-direction.md](./design-direction.md) — UI feel answers; resume after you accept this vision pass.
+[design-direction.md](./design-direction.md) — UI feel answers.
 
 ### Backlog
-[backlog.md](./backlog.md) — build order.
+[backlog.md](./backlog.md) — engineering build order. Product features: [feature-backlog.md](./feature-backlog.md).
+
+### Proof path (infra)
+First community test: **Docker Compose + public DNS + HTTPS** (see architecture). OS-specific installers and install wizard when going wide.
 
 ---
 
 ## Deferred (explicitly later)
-- Full architecture review (including possible P2P)
 - Exact capability-tier feature matrix and retention rules
-- Mothership service catalog and install wizard details
+- Mothership service catalog and install wizard **implementation** (shape outlined in architecture)
+- OS-specific server installer packages
+- Native mobile apps (PWA first)
+- Deep P2P (parked; see architecture appendix)
 - Admin election / voting governance
 - Public manifesto and growth channels
 - Hard “ready for building launch” checklist (owner gut feel)
 - Exact success KPIs / instrumentation (direction above; numbers at launch)
 
 ## Related
+- [architecture.md](./architecture.md)
 - [../.cursor/rules/functional-spec.md](../.cursor/rules/functional-spec.md)
 - [design-direction.md](./design-direction.md)
 - [backlog.md](./backlog.md)

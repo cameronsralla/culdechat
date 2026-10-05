@@ -1,0 +1,76 @@
+# Local development stack. Run from repo root: make up
+# web: http://localhost:5173  api: http://localhost:8080  mail: http://localhost:8025
+name: culdechat
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: culdechat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d culdechat"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  server:
+    build:
+      context: ../../server
+      target: dev
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: dev
+      LISTEN_ADDR: ":8080"
+      PUBLIC_URL: http://localhost:${WEB_PORT:-5173}
+      CORS_ORIGINS: http://localhost:${WEB_PORT:-5173},http://127.0.0.1:${WEB_PORT:-5173}
+      DATABASE_URL: postgres://postgres:postgres@db:5432/culdechat?sslmode=disable
+      JWT_SECRET: local-dev-only-secret-change-me-0123456789
+      RATE_LIMIT: "false"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: noreply@culdechat.local
+      SMTP_STARTTLS: "false"
+      BOOTSTRAP_ADMIN_EMAIL: admin@culdechat.local
+      BOOTSTRAP_ADMIN_PASSWORD: changeme123
+      BOOTSTRAP_ADMIN_NAME: Admin
+      BOOTSTRAP_ADMIN_UNIT: Admin
+      MEDIA_DIR: /data/media
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ../../server:/src
+      - go_mod_cache:/go/pkg/mod
+      - media_data:/data/media
+
+  web:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port ${WEB_PORT:-5173}"
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:${WEB_PORT:-5173}"
+    volumes:
+      - ../../web:/app
+      - web_node_modules:/app/node_modules
+
+volumes:
+  db_data:
+  media_data:
+  go_mod_cache:
+  web_node_modules:

@@ -1,21 +1,41 @@
-.PHONY: docs test tidy up app seed
+.PHONY: up down logs test tidy sqlc web web-build web-test lint prod-build
 
-API := api
+COMPOSE := docker compose -f deploy/dev/docker-compose.yml
 
-docs:
-	cd $(API) && go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g main.go -d ./cmd,./routes,./services -o ./docs
+## Dev stack (db, mailpit, server w/ hot reload, web w/ Vite)
+up:
+	$(COMPOSE) up --build
 
+down:
+	$(COMPOSE) down
+
+logs:
+	$(COMPOSE) logs -f server web
+
+## Server
 test:
-	cd $(API) && go test ./... -count=1
+	cd server && go test ./... -count=1
 
 tidy:
-	cd $(API) && go mod tidy
+	cd server && go mod tidy
 
-up:
-	docker compose -f infra/dev/docker-compose.yml up --build
+sqlc:
+	cd server && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
 
-app:
-	cd mobile && npx expo start --web
+lint:
+	cd server && go vet ./...
+	cd web && npm run lint && npm run typecheck
 
-seed:
-	bash infra/dev/seed.sh
+## Web (outside compose)
+web:
+	cd web && npm install && npm run dev
+
+web-build:
+	cd web && npm run build
+
+web-test:
+	cd web && npm test
+
+## Production images
+prod-build:
+	docker compose -f deploy/prod/docker-compose.yml build

@@ -1,7 +1,9 @@
 # Cul-de-Chat: Backlog
-Last Updated: September 30, 2026
+Last Updated: October 1, 2026
 
-Living list of **engineering / near-term delivery** work. Behavior lives in `.cursor/rules/`. Product feature wishlist (calendar, templates, polls, …): [feature-backlog.md](./feature-backlog.md). Avoid list: [non-goals.md](./non-goals.md). Competitors: [competitive-landscape.md](./competitive-landscape.md).
+Living list of **engineering / near-term delivery** work. Behavior lives in `.cursor/rules/` (lab). **Stack locked:** [architecture.md](./architecture.md) — Docker-first community test + responsive PWA; current repo is mock/lab. Product feature wishlist: [feature-backlog.md](./feature-backlog.md). Avoid list: [non-goals.md](./non-goals.md). Competitors: [competitive-landscape.md](./competitive-landscape.md).
+
+**Next major lane after stack docs:** feature/build work against the locked Docker + PWA architecture (not OS installers or wizard yet).
 
 When an item ships, mark it **done** here and update the matching spec.
 
@@ -29,7 +31,7 @@ API already exists for most of this. Missing UI or polish.
 | Search visible people + hidden units | done | `/messages/recipients`; unit-only for opted-out |
 | Message-by-unit | done | Lands on the active resident for that unit (primary later) |
 | Report via DM to an admin | planned | Formal report table can wait; admins are regular DM peers |
-| Realtime for new DMs | planned | Socket.IO; polling is fine for the first slice |
+| Realtime for new DMs | planned | WebSocket from the API (architecture); polling is fine for the first slice |
 | In-app notification / badge | planned | Email-on-message can follow |
 
 ## v1.2 — Households
@@ -58,8 +60,12 @@ If the leaseholder leaves and someone else stays, admin offboards the household 
 | Admin roster lifecycle | planned | Resend invite, change unit, promote/demote admin, pending vs active |
 | First-week onboarding | planned | After register: photo, join General, say hi |
 | Password / invite email copy | planned | Distinct member-invite copy from admin invite |
-| Native / installable client | planned | PWA or Expo sideload; same codebase |
-| Production host | planned | Real hostname, Caddy/HTTPS, daily Postgres backups |
+| Installable client | planned | **PWA** (manifest + service worker for install/push); no store apps for the community test |
+| Production host | planned | Production Compose: Caddy/HTTPS, API, Postgres, PWA static, backup sidecar |
+| Runtime settings table + admin settings page | planned | Community name, tier, digest schedule, feature flags (architecture) |
+| Versioned migrations | planned | Replace auto-migrate before the community test |
+| Health endpoints + admin System status | planned | `/healthz`, `/readyz`, version/disk/last backup |
+| Per-user rate limits (posts, DMs, uploads, invites) | planned | Auth limits already exist |
 | 30-day hard-delete after offboard | planned | Soft-delete already lands |
 | Chat message TTL (6 months) | planned | Spec already calls for a job |
 
@@ -70,7 +76,7 @@ If the leaseholder leaves and someone else stays, admin offboards the household 
 | Mentions | later | |
 | Polls | later | |
 | Events calendar | later | A board + dates is enough at first |
-| Push notifications | later | In-app badge first |
+| Web Push (VAPID) | later | In-app badge + email first; iOS needs Home Screen install |
 | Board icons / covers | later | |
 | Read receipts / typing | later | |
 | Moderation queue / word filters | later | Report → admin DM first |
@@ -88,10 +94,11 @@ If the leaseholder leaves and someone else stays, admin offboards the household 
 
 ## Suggested order
 1. Now — done (photos, edit/delete/pin, invite copy, feed polish)
-2. **Vision & mission** — lock [vision.md](./vision.md) before deep UX (design pass paused in [design-direction.md](./design-direction.md))
-3. **Admin Guide** — living stub in [admin-guide.md](./admin-guide.md); lead with why, then admin + resident manuals as features land
-4. v1.1 DMs leftovers — unread badge, report-to-admin, Socket.IO
-5. UX deep-dive resume — per design-direction phases (Messages → feed → People/You…)
-6. Capability-tier / system-check design (core vs media-heavy hosts)
-7. v1.2 Households
-8. Then (reset, search, post images, real admin, host + backups, mothership provisioning tools)
+2. Vision — done enough in [vision.md](./vision.md)
+3. **Architecture & stack** — locked in [architecture.md](./architecture.md) (Docker-first + PWA)
+4. **Next:** feature/build against that stack (production Compose hardening, PWA, then product features)
+5. Admin Guide — living stub in [admin-guide.md](./admin-guide.md); grow as features land
+6. v1.1 DMs leftovers — unread badge, report-to-admin, realtime
+7. Capability-tier / system-check design (with feature work)
+8. v1.2 Households
+9. Go-wide only: OS installers, install wizard, mothership provisioning aids
