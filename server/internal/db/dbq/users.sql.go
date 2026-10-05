@@ -11,11 +11,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const activateUser = `-- name: ActivateUser :one
+const activateUser = `-- name: ActivateUser :exec
 UPDATE users
 SET password_hash = $2, display_name = $3, status = 'active', updated_at = now()
-WHERE id = $1
-RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+WHERE users.id = $1
 `
 
 type ActivateUserParams struct {
@@ -24,23 +23,9 @@ type ActivateUserParams struct {
 	DisplayName  string
 }
 
-func (q *Queries) ActivateUser(ctx context.Context, arg ActivateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, activateUser, arg.ID, arg.PasswordHash, arg.DisplayName)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeactivatedAt,
-	)
-	return i, err
+func (q *Queries) ActivateUser(ctx context.Context, arg ActivateUserParams) error {
+	_, err := q.db.Exec(ctx, activateUser, arg.ID, arg.PasswordHash, arg.DisplayName)
+	return err
 }
 
 const countActiveAdmins = `-- name: CountActiveAdmins :one
@@ -49,6 +34,17 @@ SELECT count(*) FROM users WHERE is_admin = TRUE AND status = 'active'
 
 func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countActiveAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUnitResidents = `-- name: CountUnitResidents :one
+SELECT count(*) FROM users WHERE unit_id = $1
+`
+
+func (q *Queries) CountUnitResidents(ctx context.Context, unitID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnitResidents, unitID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -66,92 +62,111 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createActiveUser = `-- name: CreateActiveUser :one
-INSERT INTO users (email, unit_number, display_name, password_hash, is_admin, status)
-VALUES ($1, $2, $3, $4, $5, 'active')
-RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+INSERT INTO users (email, unit_id, is_primary, display_name, password_hash, is_admin, status)
+VALUES ($1, $2, TRUE, $3, $4, $5, 'active')
+RETURNING id
 `
 
 type CreateActiveUserParams struct {
 	Email        string
-	UnitNumber   string
+	UnitID       uuid.UUID
 	DisplayName  string
 	PasswordHash *string
 	IsAdmin      bool
 }
 
-func (q *Queries) CreateActiveUser(ctx context.Context, arg CreateActiveUserParams) (User, error) {
+func (q *Queries) CreateActiveUser(ctx context.Context, arg CreateActiveUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createActiveUser,
 		arg.Email,
-		arg.UnitNumber,
+		arg.UnitID,
 		arg.DisplayName,
 		arg.PasswordHash,
 		arg.IsAdmin,
 	)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeactivatedAt,
-	)
-	return i, err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createInvitedUser = `-- name: CreateInvitedUser :one
-INSERT INTO users (email, unit_number, display_name, is_admin, status)
-VALUES ($1, $2, $3, $4, 'invited')
-RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+INSERT INTO users (email, unit_id, is_primary, display_name, is_admin, status)
+VALUES ($1, $2, TRUE, $3, $4, 'invited')
+RETURNING id
 `
 
 type CreateInvitedUserParams struct {
 	Email       string
-	UnitNumber  string
+	UnitID      uuid.UUID
 	DisplayName string
 	IsAdmin     bool
 }
 
-func (q *Queries) CreateInvitedUser(ctx context.Context, arg CreateInvitedUserParams) (User, error) {
+func (q *Queries) CreateInvitedUser(ctx context.Context, arg CreateInvitedUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createInvitedUser,
 		arg.Email,
-		arg.UnitNumber,
+		arg.UnitID,
 		arg.DisplayName,
 		arg.IsAdmin,
 	)
-	var i User
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createUnit = `-- name: CreateUnit :one
+INSERT INTO units (number) VALUES ($1) RETURNING id, number, created_at, updated_at
+`
+
+func (q *Queries) CreateUnit(ctx context.Context, number string) (Unit, error) {
+	row := q.db.QueryRow(ctx, createUnit, number)
+	var i Unit
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
+		&i.Number,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeactivatedAt,
+	)
+	return i, err
+}
+
+const deleteUnit = `-- name: DeleteUnit :exec
+DELETE FROM units WHERE id = $1
+`
+
+func (q *Queries) DeleteUnit(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUnit, id)
+	return err
+}
+
+const getUnit = `-- name: GetUnit :one
+SELECT id, number, created_at, updated_at FROM units WHERE id = $1
+`
+
+func (q *Queries) GetUnit(ctx context.Context, id uuid.UUID) (Unit, error) {
+	row := q.db.QueryRow(ctx, getUnit, id)
+	var i Unit
+	err := row.Scan(
+		&i.ID,
+		&i.Number,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM users WHERE email = $1
+SELECT id, email, unit_number, unit_id, is_primary, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM residents WHERE email = $1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (Resident, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+	var i Resident
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.UnitNumber,
+		&i.UnitID,
+		&i.IsPrimary,
 		&i.DisplayName,
 		&i.PasswordHash,
 		&i.IsAdmin,
@@ -165,16 +180,18 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM users WHERE id = $1
+SELECT id, email, unit_number, unit_id, is_primary, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM residents WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (Resident, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i Resident
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.UnitNumber,
+		&i.UnitID,
+		&i.IsPrimary,
 		&i.DisplayName,
 		&i.PasswordHash,
 		&i.IsAdmin,
@@ -189,8 +206,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 
 const listDirectory = `-- name: ListDirectory :many
 SELECT id, unit_number, display_name, email
-FROM users
-WHERE status = 'active' AND directory_opt_in = TRUE
+FROM residents
+WHERE status = 'active' AND directory_opt_in = TRUE AND is_primary = TRUE
 ORDER BY unit_number, display_name
 `
 
@@ -227,22 +244,24 @@ func (q *Queries) ListDirectory(ctx context.Context) ([]ListDirectoryRow, error)
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM users ORDER BY unit_number, display_name
+SELECT id, email, unit_number, unit_id, is_primary, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at FROM residents ORDER BY unit_number, display_name
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+func (q *Queries) ListUsers(ctx context.Context) ([]Resident, error) {
 	rows, err := q.db.Query(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []Resident{}
 	for rows.Next() {
-		var i User
+		var i Resident
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,
 			&i.UnitNumber,
+			&i.UnitID,
+			&i.IsPrimary,
 			&i.DisplayName,
 			&i.PasswordHash,
 			&i.IsAdmin,
@@ -262,8 +281,8 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const setUserAdmin = `-- name: SetUserAdmin :one
-UPDATE users SET is_admin = $2, updated_at = now() WHERE id = $1 RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+const setUserAdmin = `-- name: SetUserAdmin :exec
+UPDATE users SET is_admin = $2, updated_at = now() WHERE users.id = $1
 `
 
 type SetUserAdminParams struct {
@@ -271,32 +290,17 @@ type SetUserAdminParams struct {
 	IsAdmin bool
 }
 
-func (q *Queries) SetUserAdmin(ctx context.Context, arg SetUserAdminParams) (User, error) {
-	row := q.db.QueryRow(ctx, setUserAdmin, arg.ID, arg.IsAdmin)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeactivatedAt,
-	)
-	return i, err
+func (q *Queries) SetUserAdmin(ctx context.Context, arg SetUserAdminParams) error {
+	_, err := q.db.Exec(ctx, setUserAdmin, arg.ID, arg.IsAdmin)
+	return err
 }
 
-const setUserStatus = `-- name: SetUserStatus :one
+const setUserStatus = `-- name: SetUserStatus :exec
 UPDATE users
 SET status = $2,
     deactivated_at = CASE WHEN $2 = 'inactive' THEN now() ELSE NULL END,
     updated_at = now()
-WHERE id = $1
-RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+WHERE users.id = $1
 `
 
 type SetUserStatusParams struct {
@@ -304,27 +308,34 @@ type SetUserStatusParams struct {
 	Status string
 }
 
-func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) (User, error) {
-	row := q.db.QueryRow(ctx, setUserStatus, arg.ID, arg.Status)
-	var i User
+func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) error {
+	_, err := q.db.Exec(ctx, setUserStatus, arg.ID, arg.Status)
+	return err
+}
+
+const updateUnitNumber = `-- name: UpdateUnitNumber :one
+UPDATE units SET number = $2, updated_at = now() WHERE id = $1 RETURNING id, number, created_at, updated_at
+`
+
+type UpdateUnitNumberParams struct {
+	ID     uuid.UUID
+	Number string
+}
+
+func (q *Queries) UpdateUnitNumber(ctx context.Context, arg UpdateUnitNumberParams) (Unit, error) {
+	row := q.db.QueryRow(ctx, updateUnitNumber, arg.ID, arg.Number)
+	var i Unit
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
+		&i.Number,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeactivatedAt,
 	)
 	return i, err
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :exec
-UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1
+UPDATE users SET password_hash = $2, updated_at = now() WHERE users.id = $1
 `
 
 type UpdateUserPasswordParams struct {
@@ -337,11 +348,10 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 	return err
 }
 
-const updateUserProfile = `-- name: UpdateUserProfile :one
+const updateUserProfile = `-- name: UpdateUserProfile :exec
 UPDATE users
 SET display_name = $2, directory_opt_in = $3, updated_at = now()
-WHERE id = $1
-RETURNING id, email, unit_number, display_name, password_hash, is_admin, status, directory_opt_in, created_at, updated_at, deactivated_at
+WHERE users.id = $1
 `
 
 type UpdateUserProfileParams struct {
@@ -350,21 +360,7 @@ type UpdateUserProfileParams struct {
 	DirectoryOptIn bool
 }
 
-func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateUserProfile, arg.ID, arg.DisplayName, arg.DirectoryOptIn)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.UnitNumber,
-		&i.DisplayName,
-		&i.PasswordHash,
-		&i.IsAdmin,
-		&i.Status,
-		&i.DirectoryOptIn,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeactivatedAt,
-	)
-	return i, err
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error {
+	_, err := q.db.Exec(ctx, updateUserProfile, arg.ID, arg.DisplayName, arg.DirectoryOptIn)
+	return err
 }

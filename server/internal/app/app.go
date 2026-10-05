@@ -15,6 +15,7 @@ import (
 	"github.com/cameronsralla/culdechat/server/internal/config"
 	"github.com/cameronsralla/culdechat/server/internal/db"
 	"github.com/cameronsralla/culdechat/server/internal/features/authn"
+	"github.com/cameronsralla/culdechat/server/internal/features/messages"
 	"github.com/cameronsralla/culdechat/server/internal/features/users"
 	"github.com/cameronsralla/culdechat/server/internal/health"
 	"github.com/cameronsralla/culdechat/server/internal/httpx"
@@ -54,6 +55,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, version strin
 	settingsSvc := settings.NewService(pool)
 	usersSvc := users.NewService(pool, mailer, settingsSvc, cfg.PublicURL)
 	authSvc := authn.NewService(pool, tokens, cfg.RefreshTokenTTL)
+	messagesSvc := messages.NewService(pool)
 
 	ba := cfg.BootstrapAdmin
 	if err := usersSvc.EnsureBootstrapAdmin(ctx, ba.Email, ba.Password, ba.Name, ba.Unit); err != nil {
@@ -67,6 +69,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, version strin
 	modules := []Module{
 		&authn.Module{Svc: authSvc, Strict: strict},
 		&users.Module{Svc: usersSvc, DevMode: !cfg.IsProd()},
+		&messages.Module{Svc: messagesSvc},
 		&settings.Module{Svc: settingsSvc},
 	}
 

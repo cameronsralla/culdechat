@@ -39,6 +39,8 @@ type User struct {
 	ID             uuid.UUID `json:"id"`
 	Email          string    `json:"email"`
 	UnitNumber     string    `json:"unit_number"`
+	UnitID         uuid.UUID `json:"unit_id"`
+	IsPrimary      bool      `json:"is_primary"`
 	DisplayName    string    `json:"display_name"`
 	IsAdmin        bool      `json:"is_admin"`
 	Status         string    `json:"status"`
@@ -46,39 +48,31 @@ type User struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-func ToUser(u dbq.User) User {
+func ToUser(u dbq.Resident) User {
 	return User{
-		ID: u.ID, Email: u.Email, UnitNumber: u.UnitNumber, DisplayName: u.DisplayName,
-		IsAdmin: u.IsAdmin, Status: u.Status, DirectoryOptIn: u.DirectoryOptIn, CreatedAt: u.CreatedAt,
+		ID: u.ID, Email: u.Email, UnitNumber: u.UnitNumber, UnitID: u.UnitID, IsPrimary: u.IsPrimary,
+		DisplayName: u.DisplayName, IsAdmin: u.IsAdmin, Status: u.Status, DirectoryOptIn: u.DirectoryOptIn, CreatedAt: u.CreatedAt,
 	}
 }
 
-// DirectoryEntry is the resident-visible subset.
+// DirectoryEntry is one People row. A person row is an active resident who
+// opted in. A unit row is an occupied unit whose resident stayed hidden:
+// no id, name, or email.
 type DirectoryEntry struct {
-	ID          uuid.UUID `json:"id"`
-	UnitNumber  string    `json:"unit_number"`
-	DisplayName string    `json:"display_name"`
-	Email       string    `json:"email"`
+	Kind        string     `json:"kind"`
+	ID          *uuid.UUID `json:"id,omitempty"`
+	UnitNumber  string     `json:"unit_number"`
+	DisplayName string     `json:"display_name,omitempty"`
+	Email       string     `json:"email,omitempty"`
+	Self        bool       `json:"self,omitempty"`
 }
 
-func (s *Service) Get(ctx context.Context, id uuid.UUID) (dbq.User, error) {
+func (s *Service) Get(ctx context.Context, id uuid.UUID) (dbq.Resident, error) {
 	u, err := s.q.GetUserByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return dbq.User{}, httpx.ErrNotFound
+		return dbq.Resident{}, httpx.ErrNotFound
 	}
 	return u, err
-}
-
-func (s *Service) Directory(ctx context.Context) ([]DirectoryEntry, error) {
-	rows, err := s.q.ListDirectory(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]DirectoryEntry, len(rows))
-	for i, r := range rows {
-		out[i] = DirectoryEntry{ID: r.ID, UnitNumber: r.UnitNumber, DisplayName: r.DisplayName, Email: r.Email}
-	}
-	return out, nil
 }
 
 type UpdateProfileInput struct {
@@ -98,33 +92,35 @@ func (in *UpdateProfileInput) Validate() error {
 	return f.Err()
 }
 
-func (s *Service) UpdateProfile(ctx context.Context, id uuid.UUID, in UpdateProfileInput) (dbq.User, error) {
-	return s.q.UpdateUserProfile(ctx, dbq.UpdateUserProfileParams{ID: id, DisplayName: in.DisplayName, DirectoryOptIn: in.DirectoryOptIn})
+func (s *Service) UpdateProfile(ctx context.Context, id uuid.UUID, in UpdateProfileInput) (dbq.Resident, error) {
+	if err := s.q.UpdateUserProfile(ctx, dbq.UpdateUserProfileParams{ID: id, DisplayName: in.DisplayName, DirectoryOptIn: in.DirectoryOptIn}); err != nil {
+		return dbq.Resident{}, err
+	}
+	return s.Get(ctx, id)
 }
 
 // ---- admin ----
 
-func (s *Service) List(ctx context.Context) ([]dbq.User, error) {
+func (s *Service) List(ctx context.Context) ([]dbq.Resident, error) {
 	return s.q.ListUsers(ctx)
 }
 
 type InviteInput struct {
-	Email       string `json:"email"`
-	UnitNumber  string `json:"unit_number"`
-	DisplayName string `json:"display_name"`
-	IsAdmin     bool   `json:"is_admin"`
+	Email       string    `json:"email"`
+	UnitID      uuid.UUID `json:"unit_id"`
+	DisplayName string    `json:"display_name"`
+	IsAdmin     bool      `json:"is_admin"`
 }
 
 func (in *InviteInput) Validate() error {
 	var f httpx.Fields
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
-	in.UnitNumber = strings.TrimSpace(in.UnitNumber)
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	if !strings.Contains(in.Email, "@") || len(in.Email) > 254 {
 		f.Add("email", "must be a valid email")
 	}
-	if in.UnitNumber == "" || len(in.UnitNumber) > 32 {
-		f.Add("unit_number", "required, max 32 characters")
+	if in.UnitID == uuid.Nil {
+		f.Add("unit_id", "required")
 	}
 	if len(in.DisplayName) > 80 {
 		f.Add("display_name", "max 80 characters")
@@ -144,12 +140,18 @@ type InviteResult struct {
 
 // Invite creates an invited user and emails them a completion link.
 func (s *Service) Invite(ctx context.Context, adminID uuid.UUID, in InviteInput, devMode bool) (InviteResult, error) {
-	u, err := s.q.CreateInvitedUser(ctx, dbq.CreateInvitedUserParams{
-		Email: in.Email, UnitNumber: in.UnitNumber, DisplayName: in.DisplayName, IsAdmin: in.IsAdmin,
-	})
-	if isUniqueViolation(err) {
-		return InviteResult{}, httpx.ErrConflict.WithMessage("a resident with that email already exists")
+	if _, err := s.q.GetUnit(ctx, in.UnitID); errors.Is(err, pgx.ErrNoRows) {
+		return InviteResult{}, httpx.ErrNotFound.WithMessage("that unit does not exist")
+	} else if err != nil {
+		return InviteResult{}, err
 	}
+	id, err := s.q.CreateInvitedUser(ctx, dbq.CreateInvitedUserParams{
+		Email: in.Email, UnitID: in.UnitID, DisplayName: in.DisplayName, IsAdmin: in.IsAdmin,
+	})
+	if err != nil {
+		return InviteResult{}, inviteConflict(err)
+	}
+	u, err := s.Get(ctx, id)
 	if err != nil {
 		return InviteResult{}, err
 	}
@@ -171,7 +173,7 @@ func (s *Service) Reinvite(ctx context.Context, adminID, userID uuid.UUID, devMo
 	return s.issueInvite(ctx, u, adminID, devMode)
 }
 
-func (s *Service) issueInvite(ctx context.Context, u dbq.User, adminID uuid.UUID, devMode bool) (InviteResult, error) {
+func (s *Service) issueInvite(ctx context.Context, u dbq.Resident, adminID uuid.UUID, devMode bool) (InviteResult, error) {
 	token, err := auth.RandomToken(32)
 	if err != nil {
 		return InviteResult{}, err
@@ -210,38 +212,84 @@ func (s *Service) issueInvite(ctx context.Context, u dbq.User, adminID uuid.UUID
 	return res, nil
 }
 
-func (s *Service) SetAdmin(ctx context.Context, actor, target uuid.UUID, isAdmin bool) (dbq.User, error) {
+func (s *Service) SetAdmin(ctx context.Context, actor, target uuid.UUID, isAdmin bool) (dbq.Resident, error) {
 	if actor == target && !isAdmin {
-		return dbq.User{}, httpx.ErrConflict.WithMessage("you cannot remove your own admin role")
+		return dbq.Resident{}, httpx.ErrConflict.WithMessage("you cannot remove your own admin role")
 	}
-	u, err := s.q.SetUserAdmin(ctx, dbq.SetUserAdminParams{ID: target, IsAdmin: isAdmin})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return dbq.User{}, httpx.ErrNotFound
+	if err := s.q.SetUserAdmin(ctx, dbq.SetUserAdminParams{ID: target, IsAdmin: isAdmin}); err != nil {
+		return dbq.Resident{}, err
 	}
-	return u, err
+	return s.Get(ctx, target)
 }
 
-func (s *Service) SetStatus(ctx context.Context, actor, target uuid.UUID, active bool) (dbq.User, error) {
+func (s *Service) SetStatus(ctx context.Context, actor, target uuid.UUID, active bool) (dbq.Resident, error) {
 	if actor == target && !active {
-		return dbq.User{}, httpx.ErrConflict.WithMessage("you cannot deactivate yourself")
+		return dbq.Resident{}, httpx.ErrConflict.WithMessage("you cannot deactivate yourself")
+	}
+	existing, err := s.Get(ctx, target)
+	if err != nil {
+		return dbq.Resident{}, err
+	}
+	if existing.Status == "invited" {
+		return dbq.Resident{}, httpx.ErrConflict.WithMessage("invited residents must complete registration; resend the invite instead")
 	}
 	status := "inactive"
 	if active {
 		status = "active"
 	}
-	u, err := s.q.SetUserStatus(ctx, dbq.SetUserStatusParams{ID: target, Status: status})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return dbq.User{}, httpx.ErrNotFound
-	}
-	if err != nil {
-		return dbq.User{}, err
+	if err := s.q.SetUserStatus(ctx, dbq.SetUserStatusParams{ID: target, Status: status}); err != nil {
+		return dbq.Resident{}, err
 	}
 	if !active {
 		if err := s.q.RevokeAllRefreshTokensForUser(ctx, target); err != nil {
-			return dbq.User{}, err
+			return dbq.Resident{}, err
 		}
 	}
-	return u, nil
+	return s.Get(ctx, target)
+}
+
+// ResetPasswordResult is shown once to the admin — same out-of-band pattern as invite passcodes.
+type ResetPasswordResult struct {
+	User              User   `json:"user"`
+	TemporaryPassword string `json:"temporary_password"`
+}
+
+// ResetPassword sets a new temporary password for a registered resident, revokes
+// all their sessions, and returns the plaintext password once for the admin to
+// relay out-of-band. Does not email the password.
+func (s *Service) ResetPassword(ctx context.Context, actor, target uuid.UUID) (ResetPasswordResult, error) {
+	if actor == target {
+		return ResetPasswordResult{}, httpx.ErrConflict.WithMessage("use Change password on your profile to update your own password")
+	}
+	u, err := s.Get(ctx, target)
+	if err != nil {
+		return ResetPasswordResult{}, err
+	}
+	if u.Status == "invited" {
+		return ResetPasswordResult{}, httpx.ErrConflict.WithMessage("invited residents have not set a password yet; resend the invite instead")
+	}
+	temp, err := auth.RandomPassword(12)
+	if err != nil {
+		return ResetPasswordResult{}, err
+	}
+	hash, err := auth.HashPassword(temp)
+	if err != nil {
+		return ResetPasswordResult{}, err
+	}
+	if err := s.q.UpdateUserPassword(ctx, dbq.UpdateUserPasswordParams{ID: target, PasswordHash: &hash}); err != nil {
+		return ResetPasswordResult{}, err
+	}
+	if err := s.q.RevokeAllRefreshTokensForUser(ctx, target); err != nil {
+		return ResetPasswordResult{}, err
+	}
+
+	community := s.settings.String(ctx, settings.CommunityName, "Cul-de-Chat")
+	body := fmt.Sprintf("An admin reset your %s password.\n\nAsk them for the temporary password, then sign in and change it from your profile.\n", community)
+	if err := s.mail.Send(ctx, mail.Message{To: u.Email, Subject: "Your " + community + " password was reset", Text: body}); err != nil {
+		applog.From(ctx).Error("password reset mail failed", "err", err, "user_id", u.ID)
+		// Password is already changed; still return it to the admin.
+	}
+	return ResetPasswordResult{User: ToUser(u), TemporaryPassword: temp}, nil
 }
 
 // EnsureBootstrapAdmin creates the first admin from env when the users table is
@@ -261,16 +309,47 @@ func (s *Service) EnsureBootstrapAdmin(ctx context.Context, email, password, nam
 	if err != nil {
 		return err
 	}
-	_, err = s.q.CreateActiveUser(ctx, dbq.CreateActiveUserParams{
-		Email: email, UnitNumber: unit, DisplayName: name, PasswordHash: &hash, IsAdmin: true,
-	})
-	if err == nil {
-		applog.From(ctx).Info("bootstrap admin created", "email", email)
+	number := strings.TrimSpace(unit)
+	if number == "" {
+		number = "1"
 	}
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	q := s.q.WithTx(tx)
+	created, err := q.CreateUnit(ctx, number)
+	if err != nil {
+		return err
+	}
+	if _, err := q.CreateActiveUser(ctx, dbq.CreateActiveUserParams{
+		Email: email, UnitID: created.ID, DisplayName: name, PasswordHash: &hash, IsAdmin: true,
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	applog.From(ctx).Info("bootstrap admin created", "email", email)
+	return nil
 }
 
-func isUniqueViolation(err error) bool {
+func inviteConflict(err error) error {
+	switch constraint(err) {
+	case "users_email_key":
+		return httpx.ErrConflict.WithMessage("a resident with that email already exists")
+	case "users_one_primary_per_unit":
+		return httpx.ErrConflict.WithMessage("that unit already has a primary resident")
+	default:
+		return err
+	}
+}
+
+func constraint(err error) string {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+	if errors.As(err, &pgErr) {
+		return pgErr.ConstraintName
+	}
+	return ""
 }

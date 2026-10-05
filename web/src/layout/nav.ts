@@ -6,6 +6,8 @@ export type NavItem = { id: string; label: string; to: string; icon: IconName; a
 export const NAV: NavItem[] = [
   { id: 'home', label: 'Square', to: '/', icon: 'home', end: true },
   { id: 'people', label: 'People', to: '/directory', icon: 'people' },
+  { id: 'chat', label: 'Chat', to: '/chat', icon: 'mail' },
+  { id: 'units', label: 'Units', to: '/units', icon: 'units', adminOnly: true },
   { id: 'admin', label: 'Admin', to: '/admin', icon: 'shield', adminOnly: true },
   { id: 'you', label: 'You', to: '/you', icon: 'user' },
 ];

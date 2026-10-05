@@ -78,6 +78,22 @@ func ValidatePassword(pw string) error {
 	return nil
 }
 
+// RandomPassword returns an n-character password from an unambiguous alphabet.
+func RandomPassword(n int) (string, error) {
+	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+	if n < 10 {
+		n = 10
+	}
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b), nil
+}
+
 // RandomToken returns a URL-safe random secret of n bytes.
 func RandomToken(n int) (string, error) {
 	b := make([]byte, n)

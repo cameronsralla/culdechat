@@ -2,6 +2,7 @@ export { Avatar, initials } from './Avatar';
 export { Badge } from './Badge';
 export { Button, type ButtonProps } from './Button';
 export { Card } from './Card';
+export { DataTable, type DataTableColumn, type DataTableQuery, type SortDir } from './DataTable';
 export { EmptyState } from './EmptyState';
 export { ErrorBanner, errorMessage } from './ErrorBanner';
 export { Fab } from './Fab';

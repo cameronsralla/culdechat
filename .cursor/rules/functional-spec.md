@@ -12,7 +12,7 @@ In a world where social interaction has moved increasingly online, it has become
 The app will serve as a private, modern "town square" exclusively for verified residents of the townhome complex. The primary goal is to foster community discovery and open interaction. The system is built around user-created, interest-based "Boards" rather than closed-off private groups, encouraging exploration and connection.
 
 ## 2. User Roles & Permissions
-**Resident (Standard User)**: A verified member of the community. Can create boards, post on boards, comment, react, subscribe to boards, and send direct messages. Today one active user owns a unit. v1.2 adds household members invited by that unit's primary (see [backlog.md](../../docs/backlog.md)).
+**Resident (Standard User)**: A verified member of the community. Can create boards, post on boards, comment, react, subscribe to boards, and send direct messages. A unit is its own record. An admin creates units first, then assigns one primary resident to each. Additional non-primary residents on a unit come later (see [backlog.md](../../docs/backlog.md)).
 
 **Business Admin (Apartment Staff)**: Manages the community. Has all Resident permissions plus:
 - Onboard and offboard users.
@@ -25,7 +25,7 @@ The app will serve as a private, modern "town square" exclusively for verified r
 ## 3. Onboarding & Offboarding Workflow
 ### Onboarding
 1. A resident provides their email address to the Business Admin.
-2. The Admin enters the email and associated unit number into the system, which issues a registration token and a temporary 10-character alphanumeric passcode.
+2. The Admin creates the unit if it does not exist, then enters the email and assigns that unit. The system issues a registration token and a temporary passcode. The invite makes that person the unit's primary resident. A unit that already has a primary cannot take another until non-primary members exist.
 3. The instance sends the invite from one configured community mailbox over SMTP (apartment Microsoft 365 / Google Workspace, or a dedicated free Gmail/Outlook mailbox). There is no per-instance SaaS signup. Locally, Mailpit catches mail at `http://127.0.0.1:8025`.
 4. The admin API also returns the token and passcode so they can be shared by hand if email fails.
 5. The resident submits the token, passcode, chosen password, and display name to complete account setup.
@@ -42,10 +42,10 @@ The app will serve as a private, modern "town square" exclusively for verified r
 
 ## 5. Core Feature: User Profiles & Directory
 - **Profile Information**: Users have a display name (set at registration) and can optionally add a profile picture.
-- **Directory & Privacy**: An opt-in directory allows residents to make their Name and Unit Number visible. If a user opts out, their name is hidden on posts (unit number remains) and they are omitted from the directory.
+- **Directory & Privacy**: An opt-in directory lets residents show their name and email. If they opt out, their name stays hidden, but their unit still appears in People while they are active so a neighbor can reach them. Inactive and invited residents do not appear.
 
 ## 6. Communication
-**Direct Messaging (DM)**: Users send private, one-on-one text messages. There is a single thread per pair of people. A **Messages** tab lists conversations; a plus button starts a new chat by searching visible directory neighbors (name/unit) or unit numbers for residents who stay hidden. Messaging a unit reaches that unit's primary resident. Directory opt-out hides name and photo; unit remains reachable. Conversations are created when the first message is sent. Admins participate as ordinary users. No media, edit, or delete in the first slice; polling refreshes open threads.
+**Direct Messaging (DM)**: Users send private, one-on-one text messages. There is a single thread per pair of people. Chat is a conversation list beside the thread. The first message is typed in that thread, the same way later replies are. People opens that thread for a neighbor or a unit. Messaging a listed neighbor opens the thread immediately. Messaging a unit where the resident is not listed sends a request: they read it in the thread and accept or decline before anyone can continue. Until they accept, the sender waits and they cannot reply. A declined request can be sent again from the same thread. The unit's primary resident receives it when they are active and not listed. Directory opt-out hides name and email. Admins participate as ordinary users. No media, edit, or delete in the first slice; the inbox polls.
 
 ## 7. Moderation (MVP)
 For the initial version, users will report issues or inappropriate content by sending a direct message to a Business Admin account. A formal "report" button will be a future addition.

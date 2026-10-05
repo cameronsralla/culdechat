@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -215,8 +216,9 @@ func TestInviteFlow(t *testing.T) {
 	admin, _ := login(t, adminEmail, adminPass)
 
 	// Non-admin cannot invite (checked after we create one).
+	unit12B := ensureUnit(t, admin, "12B")
 	r := call(t, "POST", "/api/admin/users/invite", admin, map[string]any{
-		"email": "Resident@Test.local", "unit_number": "12B", "display_name": "",
+		"email": "Resident@Test.local", "unit_id": unit12B, "display_name": "",
 	})
 	want(t, r, 201)
 	passcode := r.Body["passcode"].(string)
@@ -224,7 +226,7 @@ func TestInviteFlow(t *testing.T) {
 	token := inviteURL[strings.LastIndex(inviteURL, "token=")+6:]
 
 	// Duplicate email conflicts (case-insensitive).
-	r = call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "resident@test.local", "unit_number": "12B"})
+	r = call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "resident@test.local", "unit_id": unit12B})
 	want(t, r, 409)
 
 	// Peek shows who it's for.
@@ -278,9 +280,8 @@ func TestInviteFlow(t *testing.T) {
 	// Admin roster lists both.
 	r = call(t, "GET", "/api/admin/users", admin, nil)
 	want(t, r, 200)
-	var list []map[string]any
-	_ = json.Unmarshal(r.Raw, &list)
-	if len(list) != 2 {
+	list := userItems(t, r)
+	if len(list) < 2 {
 		t.Fatalf("roster: %s", r.Raw)
 	}
 
@@ -297,11 +298,76 @@ func TestInviteFlow(t *testing.T) {
 	r = call(t, "POST", "/api/auth/login", "", map[string]string{"email": "resident@test.local", "password": "resident-pass-1"})
 	want(t, r, 403)
 
+	// Reactivate restores login.
+	want(t, call(t, "PUT", "/api/admin/users/"+resID+"/status", admin, map[string]bool{"active": true}), 200)
+	_, _ = login(t, "resident@test.local", "resident-pass-1")
+
 	// Admin cannot deactivate or demote self.
 	r = call(t, "GET", "/api/me", admin, nil)
 	adminID := r.Body["id"].(string)
 	want(t, call(t, "PUT", "/api/admin/users/"+adminID+"/status", admin, map[string]bool{"active": false}), 409)
 	want(t, call(t, "PUT", "/api/admin/users/"+adminID+"/admin", admin, map[string]bool{"is_admin": false}), 409)
+}
+
+func TestAdminResetPassword(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+
+	// Ensure a registered resident exists (invite flow may have run in other tests on a shared DB...
+	// This suite recreates the DB per TestMain, but tests share the same DB within a run.
+	r := call(t, "GET", "/api/admin/users?page_size=100", admin, nil)
+	want(t, r, 200)
+	list := userItems(t, r)
+	var resID string
+	for _, u := range list {
+		if u["email"] == "resident@test.local" && u["status"] == "active" {
+			resID = u["id"].(string)
+		}
+	}
+	if resID == "" {
+		// Create one if InviteFlow didn't leave an active resident (order-independent).
+		r = call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "resetme@test.local", "unit_id": ensureUnit(t, admin, "9")})
+		want(t, r, 201)
+		passcode := r.Body["passcode"].(string)
+		inviteURL := r.Body["invite_url"].(string)
+		token := inviteURL[strings.LastIndex(inviteURL, "token=")+6:]
+		r = call(t, "POST", "/api/auth/complete-invite", "", map[string]string{
+			"token": token, "passcode": passcode, "password": "old-password-1", "display_name": "Reset Me",
+		})
+		want(t, r, 201)
+		resID = r.Body["user"].(map[string]any)["id"].(string)
+		_, oldRefresh := login(t, "resetme@test.local", "old-password-1")
+
+		r = call(t, "POST", "/api/admin/users/"+resID+"/reset-password", admin, nil)
+		want(t, r, 200)
+		temp := r.Body["temporary_password"].(string)
+		if len(temp) < 10 {
+			t.Fatalf("temp password too short: %q", temp)
+		}
+		want(t, call(t, "POST", "/api/auth/refresh", "", map[string]string{"refresh_token": oldRefresh}), 401)
+		want(t, call(t, "POST", "/api/auth/login", "", map[string]string{"email": "resetme@test.local", "password": "old-password-1"}), 401)
+		_, _ = login(t, "resetme@test.local", temp)
+
+		r = call(t, "GET", "/api/me", admin, nil)
+		adminID := r.Body["id"].(string)
+		want(t, call(t, "POST", "/api/admin/users/"+adminID+"/reset-password", admin, nil), 409)
+		return
+	}
+
+	_, oldRefresh := login(t, "resident@test.local", "resident-pass-1")
+	r = call(t, "POST", "/api/admin/users/"+resID+"/reset-password", admin, nil)
+	want(t, r, 200)
+	temp := r.Body["temporary_password"].(string)
+	want(t, call(t, "POST", "/api/auth/refresh", "", map[string]string{"refresh_token": oldRefresh}), 401)
+	want(t, call(t, "POST", "/api/auth/login", "", map[string]string{"email": "resident@test.local", "password": "resident-pass-1"}), 401)
+	_, _ = login(t, "resident@test.local", temp)
+
+	// Restore a known password for any later tests that might need the resident.
+	resAccess, _ := login(t, "resident@test.local", temp)
+	want(t, call(t, "POST", "/api/auth/change-password", resAccess, map[string]string{"current_password": temp, "new_password": "resident-pass-1"}), 200)
+
+	r = call(t, "GET", "/api/me", admin, nil)
+	adminID := r.Body["id"].(string)
+	want(t, call(t, "POST", "/api/admin/users/"+adminID+"/reset-password", admin, nil), 409)
 }
 
 func TestChangePassword(t *testing.T) {
@@ -339,4 +405,281 @@ func TestNotFoundIsJSON(t *testing.T) {
 	if r.Body["error"] == nil {
 		t.Fatalf("expected json error body: %s", r.Raw)
 	}
+}
+
+func userItems(t *testing.T, r resp) []map[string]any {
+	t.Helper()
+	var page struct {
+		Items []map[string]any `json:"items"`
+		Total int              `json:"total"`
+	}
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatalf("users page: %v %s", err, r.Raw)
+	}
+	return page.Items
+}
+
+func TestAdminUserList(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	for i, email := range []string{"pager-a@test.local", "pager-b@test.local"} {
+		r := call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": email, "unit_id": ensureUnit(t, admin, fmt.Sprintf("P%d", i+1))})
+		if r.Status == 409 {
+			continue
+		}
+		want(t, r, 201)
+	}
+	r := call(t, "GET", "/api/admin/users?q=pager-&page_size=1&page=1&sort=email&dir=asc", admin, nil)
+	want(t, r, 200)
+	var page struct {
+		Items    []map[string]any `json:"items"`
+		Total    int              `json:"total"`
+		Page     int              `json:"page"`
+		PageSize int              `json:"page_size"`
+	}
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 2 || len(page.Items) != 1 || page.PageSize != 1 {
+		t.Fatalf("page: %s", r.Raw)
+	}
+	if page.Items[0]["email"] != "pager-a@test.local" {
+		t.Fatalf("sort: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/admin/users?q=pager-&page_size=1&page=2&sort=email&dir=asc", admin, nil)
+	want(t, r, 200)
+	items := userItems(t, r)
+	if len(items) != 1 || items[0]["email"] != "pager-b@test.local" {
+		t.Fatalf("page 2: %s", r.Raw)
+	}
+	// Column filter is applied with search, not only to the current page.
+	r = call(t, "GET", "/api/admin/users?q=pager-&status=active&page_size=1", admin, nil)
+	want(t, r, 200)
+	var filtered struct {
+		Total int `json:"total"`
+	}
+	_ = json.Unmarshal(r.Raw, &filtered)
+	if filtered.Total != 0 {
+		t.Fatalf("active filter should exclude invited pager users: %s", r.Raw)
+	}
+}
+
+func TestDirectoryList(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	ada := registerResident(t, admin, "ada@dir.test", "A1", "Ada Stone")
+	registerResident(t, admin, "bea@dir.test", "B2", "Bea Stone")
+	r := call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "cy@dir.test", "unit_id": ensureUnit(t, admin, "C3")})
+	want(t, r, 201)
+
+	r = call(t, "GET", "/api/directory?q=@dir.test&page_size=1&page=1&sort=email&dir=asc", ada, nil)
+	want(t, r, 200)
+	var page struct {
+		Items []map[string]any `json:"items"`
+		Total int              `json:"total"`
+	}
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 2 || len(page.Items) != 1 || page.Items[0]["email"] != "ada@dir.test" {
+		t.Fatalf("page: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/directory?q=@dir.test&page_size=1&page=2&sort=email&dir=asc", ada, nil)
+	want(t, r, 200)
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 || page.Items[0]["email"] != "bea@dir.test" {
+		t.Fatalf("page 2: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/directory?q=@dir.test&name=Ada&page_size=1", ada, nil)
+	want(t, r, 200)
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || page.Items[0]["display_name"] != "Ada Stone" {
+		t.Fatalf("name filter: %s", r.Raw)
+	}
+
+	r = call(t, "PATCH", "/api/me", ada, map[string]any{"display_name": "Ada Stone", "directory_opt_in": false})
+	want(t, r, 200)
+	r = call(t, "GET", "/api/directory?q=@dir.test&page_size=10", ada, nil)
+	want(t, r, 200)
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || page.Items[0]["email"] != "bea@dir.test" {
+		t.Fatalf("opt-out name search: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/directory?unit=A1&page_size=10", ada, nil)
+	want(t, r, 200)
+	page.Items = nil
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || page.Items[0]["kind"] != "unit" || page.Items[0]["unit_number"] != "A1" {
+		t.Fatalf("hidden unit: %s", r.Raw)
+	}
+	if _, ok := page.Items[0]["id"]; ok {
+		t.Fatalf("hidden unit leaked id: %s", r.Raw)
+	}
+	if _, ok := page.Items[0]["display_name"]; ok {
+		t.Fatalf("hidden unit leaked name: %s", r.Raw)
+	}
+	if _, ok := page.Items[0]["email"]; ok {
+		t.Fatalf("hidden unit leaked email: %s", r.Raw)
+	}
+	if page.Items[0]["self"] != true {
+		t.Fatalf("own unit should be marked: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/directory?name=Ada&page_size=10", ada, nil)
+	want(t, r, 200)
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 0 {
+		t.Fatalf("name filter should not find a hidden resident: %s", r.Raw)
+	}
+}
+
+func TestHiddenUnitMessage(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	ada := registerResident(t, admin, "ada.msg@test.local", "M1", "Ada Msg")
+	bea := registerResident(t, admin, "bea.msg@test.local", "M2", "Bea Msg")
+	beaID := call(t, "GET", "/api/me", bea, nil).Body["id"].(string)
+	r := call(t, "PATCH", "/api/me", bea, map[string]any{"display_name": "Bea Msg", "directory_opt_in": false})
+	want(t, r, 200)
+
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "M2", "content": "Your package is at my door"})
+	want(t, r, 200)
+	if r.Body["status"] != "pending" {
+		t.Fatalf("request: %s", r.Raw)
+	}
+	convID := r.Body["id"].(string)
+	peer := r.Body["peer"].(map[string]any)
+	if _, ok := peer["id"]; ok || peer["display_name"] != nil || peer["unit_number"] != "M2" {
+		t.Fatalf("peer: %s", r.Raw)
+	}
+	if strings.Contains(string(r.Raw), beaID) {
+		t.Fatalf("hidden id leaked: %s", r.Raw)
+	}
+
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "M2", "content": "again"})
+	want(t, r, 409)
+	r = call(t, "POST", "/api/messages", bea, map[string]any{"conversation_id": convID, "content": "thanks"})
+	want(t, r, 409)
+
+	r = call(t, "GET", "/api/messages/conversations/"+convID, bea, nil)
+	want(t, r, 200)
+	if r.Body["incoming"] != true || r.Body["status"] != "pending" {
+		t.Fatalf("incoming: %s", r.Raw)
+	}
+	msgs := r.Body["messages"].([]any)
+	if len(msgs) != 1 || msgs[0].(map[string]any)["body"] != "Your package is at my door" {
+		t.Fatalf("body: %s", r.Raw)
+	}
+
+	want(t, call(t, "POST", "/api/messages/conversations/"+convID+"/decline", bea, nil), 200)
+	r = call(t, "GET", "/api/messages/conversations", bea, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), convID) {
+		t.Fatalf("declined request still in recipient inbox: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/messages/conversations", ada, nil)
+	want(t, r, 200)
+	if !strings.Contains(string(r.Raw), `"status":"declined"`) && !strings.Contains(string(r.Raw), `"status": "declined"`) {
+		t.Fatalf("sender should see the decline: %s", r.Raw)
+	}
+
+	r = call(t, "POST", "/api/messages", ada, map[string]any{"unit_number": "M2", "content": "Still at my door"})
+	want(t, r, 200)
+	if r.Body["status"] != "pending" {
+		t.Fatalf("resend: %s", r.Raw)
+	}
+	want(t, call(t, "POST", "/api/messages/conversations/"+convID+"/accept", bea, nil), 200)
+	r = call(t, "POST", "/api/messages", bea, map[string]any{"conversation_id": convID, "content": "I'll come by"})
+	want(t, r, 200)
+	if r.Body["status"] != "open" {
+		t.Fatalf("reply: %s", r.Raw)
+	}
+	r = call(t, "GET", "/api/messages/conversations/"+convID, ada, nil)
+	want(t, r, 200)
+	if strings.Contains(string(r.Raw), beaID) || strings.Contains(string(r.Raw), "Bea Msg") {
+		t.Fatalf("hidden identity leaked after accept: %s", r.Raw)
+	}
+	msgs = r.Body["messages"].([]any)
+	if len(msgs) != 3 || msgs[2].(map[string]any)["body"] != "I'll come by" {
+		t.Fatalf("thread: %s", r.Raw)
+	}
+}
+
+func TestUnits(t *testing.T) {
+	admin, _ := login(t, adminEmail, adminPass)
+	r := call(t, "POST", "/api/admin/units", admin, map[string]any{"number": "Z1"})
+	want(t, r, 201)
+	z1 := r.Body["id"].(string)
+	if residents, ok := r.Body["residents"].([]any); !ok || len(residents) != 0 {
+		t.Fatalf("new unit should be empty: %s", r.Raw)
+	}
+	want(t, call(t, "POST", "/api/admin/units", admin, map[string]any{"number": "Z1"}), 409)
+
+	r = call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "z1@test.local", "unit_id": z1})
+	want(t, r, 201)
+	if r.Body["user"].(map[string]any)["is_primary"] != true || r.Body["user"].(map[string]any)["unit_number"] != "Z1" {
+		t.Fatalf("invite: %s", r.Raw)
+	}
+	want(t, call(t, "POST", "/api/admin/users/invite", admin, map[string]any{"email": "z1b@test.local", "unit_id": z1}), 409)
+	want(t, call(t, "DELETE", "/api/admin/units/"+z1, admin, nil), 409)
+
+	z2 := ensureUnit(t, admin, "Z2")
+	want(t, call(t, "DELETE", "/api/admin/units/"+z2, admin, nil), 204)
+	r = call(t, "GET", "/api/admin/units?vacant=true&q=Z1&page_size=10", admin, nil)
+	want(t, r, 200)
+	var page struct {
+		Items []map[string]any `json:"items"`
+		Total int              `json:"total"`
+	}
+	if err := json.Unmarshal(r.Raw, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 0 {
+		t.Fatalf("occupied unit should not be vacant: %s", r.Raw)
+	}
+}
+
+func ensureUnit(t *testing.T, admin, number string) string {
+	t.Helper()
+	r := call(t, "POST", "/api/admin/units", admin, map[string]any{"number": number})
+	if r.Status == 409 {
+		r = call(t, "GET", "/api/admin/units?q="+url.QueryEscape(number)+"&page_size=100", admin, nil)
+		want(t, r, 200)
+		var page struct {
+			Items []map[string]any `json:"items"`
+		}
+		if err := json.Unmarshal(r.Raw, &page); err != nil {
+			t.Fatal(err)
+		}
+		for _, item := range page.Items {
+			if item["number"] == number {
+				return item["id"].(string)
+			}
+		}
+		t.Fatalf("unit %s not found: %s", number, r.Raw)
+	}
+	want(t, r, 201)
+	return r.Body["id"].(string)
+}
+
+func registerResident(t *testing.T, admin, email, unit, name string) string {
+	t.Helper()
+	r := call(t, "POST", "/api/admin/users/invite", admin, map[string]any{
+		"email": email, "unit_id": ensureUnit(t, admin, unit), "display_name": name,
+	})
+	want(t, r, 201)
+	passcode := r.Body["passcode"].(string)
+	inviteURL := r.Body["invite_url"].(string)
+	token := inviteURL[strings.LastIndex(inviteURL, "token=")+6:]
+	r = call(t, "POST", "/api/auth/complete-invite", "", map[string]string{
+		"token": token, "passcode": passcode, "password": "resident-pass-1", "display_name": name,
+	})
+	want(t, r, 201)
+	return r.Body["access_token"].(string)
 }

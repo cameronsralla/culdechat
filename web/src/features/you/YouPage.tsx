@@ -83,9 +83,14 @@ export function YouPage() {
             <Text variant="subtitle">About you</Text>
             <ErrorBanner message={profileErr} />
             <TextField label="Display name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-            <label className="flex items-center gap-3 min-h-control md:min-h-control-dense">
-              <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} className="size-4 accent-brand md:size-3.5" />
-              <Text variant="body">Show me in the People directory</Text>
+            <label className="flex items-start gap-3">
+              <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} className="mt-1 size-4 accent-brand md:size-3.5" />
+              <span>
+                <Text variant="body">Show my name in the People directory</Text>
+                <Text variant="caption" as="p" tone="muted">
+                  Your unit stays visible while you're active, so a neighbor can reach you. You choose whether to accept.
+                </Text>
+              </span>
             </label>
             <Button type="submit" loading={savingProfile} className="self-start">
               Save

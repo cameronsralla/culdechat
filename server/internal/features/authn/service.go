@@ -185,7 +185,10 @@ func (s *Service) CompleteInvite(ctx context.Context, in CompleteInviteInput, c 
 	}
 	defer tx.Rollback(ctx)
 	q := s.q.WithTx(tx)
-	u, err := q.ActivateUser(ctx, dbq.ActivateUserParams{ID: inv.UserID, PasswordHash: &hash, DisplayName: in.DisplayName})
+	if err := q.ActivateUser(ctx, dbq.ActivateUserParams{ID: inv.UserID, PasswordHash: &hash, DisplayName: in.DisplayName}); err != nil {
+		return Session{}, err
+	}
+	u, err := q.GetUserByID(ctx, inv.UserID)
 	if err != nil {
 		return Session{}, err
 	}
@@ -255,7 +258,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, in Chang
 	return s.issue(ctx, u, uuid.New(), c)
 }
 
-func (s *Service) issue(ctx context.Context, u dbq.User, family uuid.UUID, c Client) (Session, error) {
+func (s *Service) issue(ctx context.Context, u dbq.Resident, family uuid.UUID, c Client) (Session, error) {
 	now := time.Now()
 	access, err := s.tokens.Issue(u.ID, u.IsAdmin, now)
 	if err != nil {

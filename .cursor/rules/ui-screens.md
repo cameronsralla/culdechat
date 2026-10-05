@@ -83,22 +83,12 @@ Name and optional description. Creator is subscribed. Redirects to the new board
 ## 3d. Directory
 Path: `/directory`
 
-Opted-in neighbors: photo, name, and unit. Message opens compose with that person. Pull to refresh.
+Table of listed neighbors (name, email, unit) plus a unit-only row for each occupied unit whose resident is not listed. Message opens Chat with that person or unit.
 
-## 3e. Messages
-Path: `/messages`
+## 3e. Chat
+Path: `/chat`
 
-Inbox of 1:1 conversations (peer label, last message preview, relative time). FAB (+) → New message. Pull to refresh.
-
-### New message
-Path: `/messages/new`
-
-Search visible people by name/unit; hidden residents appear as unit-only hits. Optional deep link params `userId` / `unit` / `name` from Directory or post author. First send creates the thread and navigates to it.
-
-### Conversation
-Path: `/messages/{conversationId}`
-
-Simple text stream (no media, edit, or delete). Composer at the bottom. Polls while focused.
+A conversation list beside the open thread (on a narrow screen, one or the other). New chat searches listed neighbors and hidden units, then opens the thread — an existing one if you already have it. The first message and later replies use the composer at the bottom. Enter sends. An incoming request shows the message with Accept and Decline in place of the composer. Until they accept, the sender sees a waiting state and cannot add more. After a decline, the sender can send again from the same thread. A hidden neighbor is labeled by unit only. The list polls.
 
 ## 4. Post Detail Screen
 Path: `/posts/{postId}`

@@ -10,6 +10,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type Conversation struct {
+	ID          uuid.UUID
+	UserLow     uuid.UUID
+	UserHigh    uuid.UUID
+	Status      string
+	RequestedBy uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type DirectMessage struct {
+	ID             uuid.UUID
+	ConversationID uuid.UUID
+	SenderID       uuid.UUID
+	Body           string
+	CreatedAt      time.Time
+}
+
 type Invite struct {
 	ID           uuid.UUID
 	UserID       uuid.UUID
@@ -33,17 +51,12 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
-type Setting struct {
-	Key       string
-	Value     []byte
-	UpdatedAt time.Time
-	UpdatedBy *uuid.UUID
-}
-
-type User struct {
+type Resident struct {
 	ID             uuid.UUID
 	Email          string
 	UnitNumber     string
+	UnitID         uuid.UUID
+	IsPrimary      bool
 	DisplayName    string
 	PasswordHash   *string
 	IsAdmin        bool
@@ -52,4 +65,33 @@ type User struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeactivatedAt  *time.Time
+}
+
+type Setting struct {
+	Key       string
+	Value     []byte
+	UpdatedAt time.Time
+	UpdatedBy *uuid.UUID
+}
+
+type Unit struct {
+	ID        uuid.UUID
+	Number    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type User struct {
+	ID             uuid.UUID
+	Email          string
+	DisplayName    string
+	PasswordHash   *string
+	IsAdmin        bool
+	Status         string
+	DirectoryOptIn bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeactivatedAt  *time.Time
+	UnitID         uuid.UUID
+	IsPrimary      bool
 }

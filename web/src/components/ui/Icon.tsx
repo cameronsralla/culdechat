@@ -16,10 +16,12 @@ const PATHS = {
   check: 'm5 12 5 5L20 7',
   copy: 'M9 9h10v10H9zM5 15V5h10',
   mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  send: 'M3 11.5 21 3l-7.5 18-2.2-7.3L3 11.5z',
   logout: 'M15 17l5-5-5-5M20 12H9M13 21H5V3h8',
   alert: 'M12 9v4m0 4h.01M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z',
   info: 'M12 16v-4m0-4h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
-  menu: 'M4 7h16M4 12h16M4 17h16',
+  filter: 'M4 5h16l-6 7v6l-4 2V12L4 5z',
+  units: 'M4 20V9l8-5 8 5v11M9 20v-6h6v6',
 } as const;
 
 export type IconName = keyof typeof PATHS;
