@@ -25,15 +25,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             onOpenChange={(open) => !open && setItems((cur) => cur.filter((x) => x.id !== t.id))}
             className={cn(
-              'flex items-start gap-3 rounded-md border bg-surface px-4 py-3 shadow-card',
-              'data-[state=open]:animate-in data-[state=closed]:animate-out',
-              t.tone === 'danger' ? 'border-danger/30' : t.tone === 'success' ? 'border-brand-line' : 'border-line-soft',
+              'flex items-start gap-3 rounded-md border bg-raised px-4 py-3 shadow-raised',
+              t.tone === 'danger' ? 'border-danger/30' : t.tone === 'success' ? 'border-success/30' : 'border-line',
             )}
           >
             <Icon
               name={t.tone === 'danger' ? 'alert' : t.tone === 'success' ? 'check' : 'info'}
               size={20}
-              className={cn('mt-0.5 shrink-0', t.tone === 'danger' ? 'text-danger' : 'text-brand')}
+              className={cn(
+                'mt-0.5 shrink-0',
+                t.tone === 'danger' ? 'text-danger' : t.tone === 'success' ? 'text-success' : 'text-brand',
+              )}
             />
             <div className="min-w-0 flex-1">
               <RadixToast.Title asChild>

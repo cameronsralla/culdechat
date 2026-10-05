@@ -46,7 +46,7 @@ export function AdminPage() {
 
   return (
     <Screen title="Admin" wide>
-      <PageHeader eyebrow="Community" title="Admin" description="Invite residents and manage the roster." />
+      <PageHeader title="Admin" description="Invite residents and manage the roster." />
 
       <Card>
         <form onSubmit={submit}>
@@ -69,7 +69,7 @@ export function AdminPage() {
         <Card tone="pin">
           <Stack gap={2}>
             <Text variant="subtitle">Passcode for {last.user.email}</Text>
-            <Text variant="display" as="p" className="tracking-widest">
+            <Text variant="display" as="p" className="font-mono tracking-widest">
               {last.passcode}
             </Text>
             <Text variant="caption" tone="muted">

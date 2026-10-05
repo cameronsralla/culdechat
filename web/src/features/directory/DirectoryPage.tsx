@@ -7,7 +7,7 @@ export function DirectoryPage() {
   const q = useQuery({ queryKey: ['directory'], queryFn: usersApi.directory });
   return (
     <Screen title="People">
-      <PageHeader eyebrow="Neighbors" title="People" description="Residents who've chosen to be listed." />
+      <PageHeader title="People" description="Residents who've chosen to be listed." />
       {q.isError && <ErrorBanner message={errorMessage(q.error)} />}
       {q.data && q.data.length === 0 && <EmptyState icon="people" title="No one listed yet" body="Residents appear here once they opt in from their profile." />}
       {q.data && q.data.length > 0 && (

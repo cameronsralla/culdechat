@@ -16,8 +16,8 @@ export default defineConfig({
         name: 'Cul-de-Chat',
         short_name: 'Cul-de-Chat',
         description: 'Your community, your square.',
-        theme_color: '#0C7C86',
-        background_color: '#F0EBE3',
+        theme_color: '#008098',
+        background_color: '#F3F2F0',
         display: 'standalone',
         start_url: '/',
         icons: [

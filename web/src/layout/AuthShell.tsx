@@ -5,9 +5,9 @@ import { Logo, Text } from '@/components/ui';
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-paper px-4 py-10">
-      <div className="flex w-full max-w-auth flex-col gap-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Logo size={104} className="rounded-lg shadow-card" />
+      <div className="flex w-full max-w-auth flex-col gap-5">
+        <div className="flex flex-col items-center gap-2.5 text-center">
+          <Logo size={88} className="rounded-md border border-line bg-raised" />
           <Text variant="title">{title}</Text>
           {subtitle && (
             <Text variant="body" tone="muted">
@@ -15,7 +15,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
             </Text>
           )}
         </div>
-        <div className="rounded-lg border border-line-soft bg-surface p-5 shadow-card md:p-6">{children}</div>
+        <div className="rounded-md border border-line bg-surface p-4 md:p-5">{children}</div>
       </div>
     </div>
   );

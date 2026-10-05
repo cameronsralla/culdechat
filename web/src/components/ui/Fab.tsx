@@ -10,7 +10,7 @@ export function Fab({ to, label, icon = 'plus' }: { to: string; label: string; i
     <Link
       to={to}
       aria-label={label}
-      className="fixed bottom-[calc(var(--spacing-tabbar)+1rem+env(safe-area-inset-bottom))] right-4 z-20 flex size-14 items-center justify-center rounded-pill bg-brand text-white shadow-raised hover:bg-brand-dark md:bottom-8 md:right-8"
+      className="fixed bottom-[calc(var(--spacing-tabbar)+1rem+env(safe-area-inset-bottom))] right-4 z-20 flex size-12 items-center justify-center rounded-pill bg-brand text-white shadow-raised transition-transform active:scale-[0.96] hover:bg-brand-dark md:bottom-8 md:right-8 md:size-11"
     >
       <Icon name={icon} size={26} />
     </Link>

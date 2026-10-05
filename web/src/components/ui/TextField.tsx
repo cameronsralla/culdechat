@@ -13,8 +13,8 @@ type AreaProps = Base & TextareaHTMLAttributes<HTMLTextAreaElement> & { multilin
 export type TextFieldProps = InputProps | AreaProps;
 
 const FIELD =
-  'w-full rounded-sm border bg-surface px-4 py-3 text-body text-ink placeholder:text-muted/70 ' +
-  'border-line focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 ' +
+  'w-full rounded-sm border bg-raised px-3 text-body text-ink placeholder:text-muted/70 ' +
+  'border-line focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 ' +
   'disabled:bg-surface-muted disabled:text-muted';
 
 export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, TextFieldProps>(function TextField(
@@ -26,7 +26,7 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
   const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
 
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
+    <div className={cn('flex flex-col gap-1', className)}>
       {label && (
         <label htmlFor={id}>
           <Text variant="label" tone="muted">
@@ -40,7 +40,7 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
           ref={ref as React.Ref<HTMLTextAreaElement>}
           aria-invalid={!!error}
           aria-describedby={describedBy}
-          className={cn(FIELD, 'min-h-28 resize-y', error && 'border-danger')}
+          className={cn(FIELD, 'min-h-28 resize-y py-2.5', error && 'border-danger')}
           {...(omit(rest as AreaProps, 'multiline') as TextareaHTMLAttributes<HTMLTextAreaElement>)}
         />
       ) : (
@@ -49,7 +49,7 @@ export const TextField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Text
           ref={ref as React.Ref<HTMLInputElement>}
           aria-invalid={!!error}
           aria-describedby={describedBy}
-          className={cn(FIELD, 'min-h-control', error && 'border-danger')}
+          className={cn(FIELD, 'min-h-control md:min-h-control-dense', error && 'border-danger')}
           {...(omit(rest as InputProps, 'multiline') as InputHTMLAttributes<HTMLInputElement>)}
         />
       )}

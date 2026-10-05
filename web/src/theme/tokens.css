@@ -1,81 +1,87 @@
 /*
- * Design tokens — the single visual source of truth.
- * Tailwind v4 reads @theme and exposes each token as a utility
- * (bg-brand, text-ink, rounded-md, shadow-card, ...). Components must use
- * these utilities; never hard-code colors, sizes, or radii.
+ * Design tokens — single visual source of truth.
  *
- * Direction: lagoon teal town square on warm stone paper — cozy, clear,
- * neighborly. Connection over engagement; calm when idle.
+ * Language: "Warm craft" — neighborly warmth, craftsman density.
+ * Grounded stone neutrals; brand teal as a sharp accent, not a pastel wash.
+ * Hairlines + lightness elevation. Density: touch-first → denser on md+.
  */
 @import 'tailwindcss';
 
 @theme {
-  /* Reset Tailwind's palette; only our tokens exist. */
   --color-*: initial;
 
-  --color-brand: #0c7c86;
-  --color-brand-dark: #085a62;
-  --color-brand-soft: #ddf0f2;
-  --color-brand-line: #a9d4da;
-  --color-brand-wash: #e8f5f6;
+  /* Brand: matched to logo teal (#008098) — accent only, not pastel fills */
+  --color-brand: #008098;
+  --color-brand-dark: #006677;
+  --color-brand-soft: #eef5f7;
+  --color-brand-line: #bdd4da;
+  --color-brand-wash: #f2f7f8;
 
-  --color-paper: #f0ebe3;
-  --color-paper-deep: #e2d9cc;
-  --color-surface: #fffdf9;
-  --color-surface-muted: #f7f2ea;
+  /* Neutrals: warm-gray stone, not nursery cream */
+  --color-paper: #f3f2f0;
+  --color-paper-deep: #e7e5e2;
+  --color-surface: #fafaf9;
+  --color-surface-muted: #f1f0ee;
+  --color-raised: #ffffff;
 
-  --color-ink: #1c2529;
-  --color-muted: #5a656c;
-  --color-line: #d9d0c2;
-  --color-line-soft: #ebe3d7;
+  --color-ink: #14181a;
+  --color-muted: #5c6468;
+  --color-line: #e1dfdc;
+  --color-line-soft: #eceae7;
 
-  --color-danger: #b42318;
-  --color-danger-soft: #f9e8e6;
-  --color-pin: #f3e6c4;
-  --color-pin-line: #e0cc8f;
+  --color-danger: #a61b12;
+  --color-danger-soft: #f7eceb;
+  --color-success: #0d6b45;
+  --color-success-soft: #e8f3ee;
+  /* Quiet sand for “pinned / attention” — not candy gold */
+  --color-pin: #f3f0ea;
+  --color-pin-line: #d9d3c8;
   --color-white: #ffffff;
-  --color-overlay: rgb(28 37 41 / 0.04);
-  --color-ink-faint: rgb(28 37 41 / 0.06);
+  --color-overlay: rgb(20 24 26 / 0.04);
+  --color-ink-faint: rgb(20 24 26 / 0.05);
 
-  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-  /* Type scale: size / line-height / tracking (used by AppText variants). */
-  --text-display: 2.25rem;
-  --text-display--line-height: 2.625rem;
-  --text-display--letter-spacing: -0.05rem;
-  --text-title: 1.625rem;
-  --text-title--line-height: 2rem;
-  --text-title--letter-spacing: -0.025rem;
-  --text-subtitle: 1.0625rem;
+  --text-display: 2.125rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.04rem;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.875rem;
+  --text-title--letter-spacing: -0.02rem;
+  --text-subtitle: 1rem;
   --text-subtitle--line-height: 1.375rem;
-  --text-body: 1rem;
+  --text-body: 0.9375rem;
   --text-body--line-height: 1.5rem;
   --text-label: 0.75rem;
   --text-label--line-height: 1rem;
-  --text-label--letter-spacing: 0.025rem;
+  --text-label--letter-spacing: 0.01rem;
   --text-caption: 0.8125rem;
   --text-caption--line-height: 1.125rem;
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --shadow-card: 0 6px 20px rgb(28 37 41 / 0.06);
-  --shadow-raised: 0 10px 28px rgb(8 90 98 / 0.28);
-  --shadow-soft: 0 2px 10px rgb(28 37 41 / 0.04);
+  /* Neutral float shadow — not brand-tinted */
+  --shadow-raised: 0 8px 24px rgb(20 24 26 / 0.12);
+  --shadow-soft: 0 1px 2px rgb(20 24 26 / 0.04);
 
-  /* Layout: the md breakpoint is the compact/wide switch (phone vs laptop). */
   --breakpoint-*: initial;
-  --breakpoint-md: 50rem; /* 800px */
+  --breakpoint-md: 50rem;
   --breakpoint-lg: 64rem;
 
-  --spacing-sidebar: 264px;
+  --spacing-sidebar: 240px;
   --spacing-content: 720px;
-  --spacing-auth: 440px;
-  --spacing-control: 52px;
-  --spacing-control-sm: 40px;
-  --spacing-tabbar: 64px;
+  --spacing-auth: 420px;
+  --spacing-control: 2.75rem;
+  --spacing-control-sm: 2.25rem;
+  --spacing-control-dense: 2rem;
+  --spacing-control-dense-sm: 1.75rem;
+  --spacing-row: 3.25rem;
+  --spacing-row-dense: 2.5rem;
+  --spacing-tabbar: 3.5rem;
 }
 
 @layer base {
@@ -103,5 +109,9 @@
   select {
     font: inherit;
     color: inherit;
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
   }
 }

@@ -12,7 +12,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] border-t border-line-soft bg-surface pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] border-t border-line bg-raised pb-[env(safe-area-inset-bottom)]"
     >
       {items.map((n) => (
         <NavLink
@@ -21,7 +21,7 @@ export function TabBar() {
           end={n.end}
           className={({ isActive }) =>
             cn(
-              'flex flex-1 flex-col items-center justify-center gap-0.5 text-label font-semibold',
+              'flex flex-1 flex-col items-center justify-center gap-0.5 text-caption font-medium',
               isActive ? 'text-brand' : 'text-muted',
             )
           }

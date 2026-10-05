@@ -1,16 +1,14 @@
 import type { ReactNode } from 'react';
-import { Badge } from './Badge';
 import { Text } from './Text';
 
-/** Page title block with optional eyebrow chip, description, and actions. */
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
+/** Page title block with optional description and actions. */
+export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="flex flex-col gap-1.5">
-        {eyebrow && <Badge className="self-start">{eyebrow}</Badge>}
+      <div className="flex flex-col gap-1">
         <Text variant="title">{title}</Text>
         {description && (
-          <Text variant="body" tone="muted">
+          <Text variant="body" tone="muted" as="div">
             {description}
           </Text>
         )}

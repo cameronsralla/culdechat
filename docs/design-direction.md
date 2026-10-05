@@ -1,70 +1,79 @@
 # Cul-de-Chat: Design Direction
-Last Updated: September 30, 2026
+Last Updated: October 4, 2026
 
-Status: **active — best-guess pass applied to the mock.** Working process remains: go item-by-item when refining; vision drives feel ([vision.md](./vision.md)).
+Status: **Warm craft locked** (Outfit, grounded stone palette, density A). Refine from real use.
 
 ---
 
-## Locked so far (Phase 0 — language)
-
-### North star (synthesis)
+## North star
 **The modern digital town square for bringing local communities together.**
 
-A private, neighbor-only social space that makes it easy and pleasant to meet and talk to the people who live around you — exclusive to the community, warm to use, clear in purpose: help rebuild local community connection.
+Private, neighbor-only, warm to use, clear in purpose — help rebuild local community connection.
 
-Combo of:
-- Cozy private town square you want to open
-- Lively neighbor social that feels a bit playful  
-…with the deeper why: facilitate neighbor communication and bring people together where they live.
+## Design language: Warm craft
 
-### Fun level
-**3 / 5** — warm + light delight on success; not invisible utility, not playful/animated personality-forward.
+**One line:** Neighborly warmth, craftsman density.
 
-### Non-negotiables
+Borrow craft discipline from Linear/Attio/Amie/Resend; keep Cul-de-Chat’s town-square soul. Not dark-native Linear. Not brutalist Resend. Not pastel “toy.”
+
+### Locked
 | Topic | Decision |
 |---|---|
-| Dark mode | Yes — **after** light mode is solid (tokens later) |
-| Sound effects | No |
-| Emoji in UI chrome (tabs, badges) | No — more professional/sleek |
-| Visual reference | Apple UI + Google clean interfaces, but warmer and more inviting |
-| Illustrations / empty-state art | Soft icon wells for now; custom art later if needed |
+| Typeface | **Outfit** + JetBrains Mono accents |
+| Density | 44px controls / 52px rows on compact; 32px / 40px on `md+` |
+| Elevation | Hairline borders + lightness steps (`paper` → `surface` → `raised`). Shadows only on floating chrome |
+| Radius | 8 / 12 / 16 (+ pill) |
+| Palette | Grounded stone neutrals; deeper desaturated teal as **accent only** — no mint washes filling panels |
+| Brand usage | Primary buttons, active nav indicator, focus rings. Not avatar fills, empty-state wells, or whole cards |
+| Dark mode | After light is solid |
+| Sound | No |
+| Emoji in chrome | No |
+| Fun | 3 / 5 — press scale; calm when idle |
+| Copy | Neighborly and short |
 
-### Copy voice
-**Neighborly and short.** Encourage use in a warm way. Calm when idle — invite, don’t nag.
+### Surfaces
+| Token | Role |
+|---|---|
+| `paper` | Page background (warm gray stone `#F3F2F0`) |
+| `surface` | Panels, lists |
+| `raised` | Inputs, popovers, floating chrome |
+| `surface-muted` | Wells, selected nav, muted chrome |
 
-### Reference apps / philosophy
-- **Classic Twitter** — playful enough, strong consistent theme; Cul-de-Chat more polished/clean.
-- **Obsidian (philosophy, not look)** — well thought out; gets out of the way when not needed.
-
----
-
-## Best-guess assumptions (applied Sept 30)
-
-| Question | Assumption | How it shows up |
+### Brand
+| Token | Hex | Use |
 |---|---|---|
-| **A. Exclusivity in UI** | Soft reminders, not loud | “Neighbors only” / “Invite-only” chips on login, shell header, home hero, sidebar |
-| **B. Warmth dial** | All lightly | Lagoon teal + warm stone paper, branded wash, HeroBand, softer shadows, Nunito hierarchy |
-| **C. Quiet-state tone** | Calm with gentle invite | Empty copy like “Quiet for now…” + soft secondary CTA, not FOMO |
-| **D. Dark mode timing** | Later | Light polish only this pass |
+| `brand` | `#008098` | Actions, active accents (matched to logo) |
+| `brand-soft` / `brand-wash` | near-neutral tint | Tiny badge fills only — never large panels |
 
-### Layout / kit choices this pass
-- Home tab labeled **Square**; mobile header title **The square**
-- Home opens with a **HeroBand** (atmosphere + exclusivity + purpose)
-- People / Messages use **grouped list rows** (less card stack)
-- Boards keep cards; joined boards get a brand accent
-- You screen teases **About you** (profile richness coming)
-- Shell: teal wash, sidebar brand block + “Neighbors only”, signed-in footer
+### Control density
+| Token | Compact | Desktop (`md+`) |
+|---|---|---|
+| `control` | 44px | 32px |
+| `control-sm` | 36px | 28px |
+| `row` | 52px | 40px |
+
+### Motion
+- Buttons: `active:scale-[0.98]`
+- Sheets/drawers: short spring (when added)
+- No decorative idle animation
+
+### What we explicitly do not take
+- Linear dark-native monochrome
+- Resend black-and-white brutalism
+- Cream/mint pastel surfaces that read as toy/kids
+- Heavy multi-layer card shadows
+- Phone-sized controls on desktop
+- Brand-tinted fills for avatars / empty states / whole cards
+---
+
+## Reference apps (borrow, don’t copy)
+- **Linear** — hairlines, lightness elevation, keyboard density
+- **Attio** — compact control baselines, pill badges
+- **Amie** — light spring press (dialed to 3/5)
+- **Resend** — mono accents for precision data
+- **Reflect** — zero-chrome compose later
 
 ---
 
-## Planned sequence (continued)
-1. ~~Finish Phase 0 assumptions~~ (best-guess locked above; revisit if you disagree)
-2. Phase 1 — Core loops polish from real use: Messages → Home/post → People/You → Boards → Auth
-3. Phase 2 — Continuity (unread, optimistic send, toasts)
-4. Phase 3 — Motion system
-5. Phase 4 — Light delight
-6. Phase 5 — A11y + visual confidence
-7. Dark mode tokens when light feels settled
-
-## Feel stack (reminder)
-Structure → Visual system → Interaction → Motion → Delight (in that order).
+## Feel stack
+Structure → Visual system → Interaction → Motion → Delight.

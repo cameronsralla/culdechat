@@ -6,7 +6,7 @@ import { Text } from './Text';
 
 /** A bordered group of rows; rows get dividers automatically. */
 export function ListGroup({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('overflow-hidden rounded-md border border-line-soft bg-surface shadow-soft divide-y divide-line-soft', className)} {...rest} />;
+  return <div className={cn('overflow-hidden rounded-md border border-line bg-surface divide-y divide-line-soft', className)} {...rest} />;
 }
 
 type RowProps = {
@@ -24,7 +24,7 @@ export function ListRow({ leading, title, subtitle, trailing, to, onClick, class
   const body = (
     <>
       {leading && <div className="shrink-0">{leading}</div>}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
         <Text variant="subtitle" className="truncate">
           {title}
         </Text>
@@ -38,7 +38,7 @@ export function ListRow({ leading, title, subtitle, trailing, to, onClick, class
     </>
   );
   const cls = cn(
-    'flex w-full items-center gap-3 px-4 py-3 text-left',
+    'flex w-full items-center gap-3 px-3 py-3 text-left md:px-4 md:py-2.5 min-h-row md:min-h-row-dense',
     interactive && 'hover:bg-surface-muted active:bg-overlay transition-colors',
     className,
   );

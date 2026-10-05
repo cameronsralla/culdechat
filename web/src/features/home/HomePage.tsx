@@ -6,7 +6,7 @@ export function HomePage() {
   const { user } = useAuth();
   return (
     <Screen title="The square">
-      <PageHeader eyebrow="Today" title={`Hi, ${user?.display_name?.split(' ')[0] || 'neighbor'}`} description="What's happening around the neighborhood." />
+      <PageHeader title={`Hi, ${user?.display_name?.split(' ')[0] || 'neighbor'}`} description="What's happening around the neighborhood." />
       <Card tone="wash">
         <Text variant="subtitle">Framework check</Text>
         <Text variant="caption" tone="muted">

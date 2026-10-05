@@ -1,16 +1,17 @@
 import type { HTMLAttributes, ElementType } from 'react';
 import { cn } from '@/lib/cn';
 
-type Variant = 'display' | 'title' | 'subtitle' | 'body' | 'label' | 'caption';
-type Tone = 'ink' | 'muted' | 'brand' | 'danger' | 'inverse';
+type Variant = 'display' | 'title' | 'subtitle' | 'body' | 'label' | 'caption' | 'mono';
+type Tone = 'ink' | 'muted' | 'brand' | 'danger' | 'success' | 'inverse';
 
 const VARIANT: Record<Variant, string> = {
-  display: 'text-display font-extrabold',
-  title: 'text-title font-bold',
+  display: 'text-display font-bold',
+  title: 'text-title font-semibold',
   subtitle: 'text-subtitle font-semibold',
-  body: 'text-body',
-  label: 'text-label font-semibold uppercase',
-  caption: 'text-caption',
+  body: 'text-body font-normal',
+  label: 'text-label font-medium',
+  caption: 'text-caption font-normal',
+  mono: 'text-caption font-mono font-medium tracking-tight',
 };
 
 const TONE: Record<Tone, string> = {
@@ -18,6 +19,7 @@ const TONE: Record<Tone, string> = {
   muted: 'text-muted',
   brand: 'text-brand',
   danger: 'text-danger',
+  success: 'text-success',
   inverse: 'text-white',
 };
 
@@ -28,6 +30,7 @@ const DEFAULT_TAG: Record<Variant, ElementType> = {
   body: 'p',
   label: 'span',
   caption: 'span',
+  mono: 'span',
 };
 
 type Props = HTMLAttributes<HTMLElement> & { variant?: Variant; tone?: Tone; as?: ElementType };

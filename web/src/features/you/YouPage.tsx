@@ -53,7 +53,15 @@ export function YouPage() {
 
   return (
     <Screen title="You">
-      <PageHeader eyebrow="Profile" title={user.display_name || user.email} description={`Unit ${user.unit_number}`} actions={user.is_admin && <Badge tone="pin">Admin</Badge>} />
+      <PageHeader
+        title={user.display_name || user.email}
+        description={
+          <span>
+            Unit <span className="font-mono">{user.unit_number}</span>
+          </span>
+        }
+        actions={user.is_admin && <Badge tone="pin">Admin</Badge>}
+      />
 
       <Card>
         <Stack row gap={4} align="center">
@@ -75,8 +83,8 @@ export function YouPage() {
             <Text variant="subtitle">About you</Text>
             <ErrorBanner message={profileErr} />
             <TextField label="Display name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-            <label className="flex items-center gap-3">
-              <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} className="size-5 accent-brand" />
+            <label className="flex items-center gap-3 min-h-control md:min-h-control-dense">
+              <input type="checkbox" checked={optIn} onChange={(e) => setOptIn(e.target.checked)} className="size-4 accent-brand md:size-3.5" />
               <Text variant="body">Show me in the People directory</Text>
             </label>
             <Button type="submit" loading={savingProfile} className="self-start">
